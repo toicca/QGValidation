@@ -31,10 +31,10 @@ def ObjSelection(obj,name,year=2016,selection=None):
         if year == 2016:
             if name == 'jet':
                 selection = (
-                    (np.abs(obj.eta) < 2.4) & (obj.pt > 30)  & 
+                    (np.abs(obj.eta) < 2.4) & (obj["pt"] > 30)  & 
                     (
-                        (obj.pt >= 50) 
-                        | ((obj.pt < 50) & (obj.pu_id>=6) )
+                        (obj["pt"] >= 50) 
+                        | ((obj["pt"] < 50) & (obj.pu_id>=6) )
                     ) &
                     ((obj.jet_id==7)) & #tight
                     #(jets.b_tag >= 0) &
@@ -44,20 +44,20 @@ def ObjSelection(obj,name,year=2016,selection=None):
             elif name == 'muon':
                 selection = (
                     (np.abs(obj.eta) < 2.4) & (obj.pt > 10)  &
-                    (obj['dxy'] < 0.2) &
-                    (obj['dz'] < 0.5) &
-                    (obj['iso'] < 0.15) &
-                    (obj['isLoose']) &
+                    (obj.dxy < 0.2) &
+                    (obj.dz < 0.5) &
+                    (obj.iso < 0.15) &
+                    (obj.isLoose) &
                     (obj.mass > -1)  
                 )
                 
             elif name == 'tight_muon':
                 selection = (
                     (np.abs(obj.eta) < 2.4) & (obj.pt > 20)  &
-                    (obj['dxy'] < 0.2) &
-                    (obj['dz'] < 0.5) &
-                    (obj['iso'] < 0.15) &
-                    (obj['isTight']) &
+                    (obj.dxy < 0.2) &
+                    (obj.dz < 0.5) &
+                    (obj.iso < 0.15) &
+                    (obj.isTight) &
                     (obj.mass > -1) 
                 )
                 
@@ -66,10 +66,10 @@ def ObjSelection(obj,name,year=2016,selection=None):
                     (np.abs(obj.eta) < 2.4) & (obj.pt > 15)  &
                     (obj.iso < 0.15) & 
                     (
-                        ((np.abs(obj.eta) < 1.4442) & (np.abs(obj['dxy']) < 0.05) & (np.abs(obj['dz']) < 0.1) ) 
-                        | ((np.abs(obj.eta) > 1.5660) & (np.abs(obj['dxy']) < 0.1) & (np.abs(obj['dz']) < 0.2) )
+                        ((np.abs(obj.eta) < 1.4442) & (np.abs(obj.dxy) < 0.05) & (np.abs(obj.dz) < 0.1) ) 
+                        | ((np.abs(obj.eta) > 1.5660) & (np.abs(obj.dxy) < 0.1) & (np.abs(obj.dz) < 0.2) )
                     ) & 
-                    (obj['cutbased']>=2) &
+                    (obj.cutbased >=2) &
                     (obj.mass >-1)        
                 )
                 
@@ -77,48 +77,49 @@ def ObjSelection(obj,name,year=2016,selection=None):
                 
             if name == 'jet':
                 selection = (
-                    (np.abs(obj.eta) < 4.7) & 
-                    (obj.pt > 30)  & 
-                    ((obj.jet_id==6)) & #tight
-                    (obj.mass > -1) 
+                    (np.abs(obj["eta"]) < 4.7) & 
+                    (obj["pt"] > 12)  & 
+                    (obj["jet_id"]==6) & #tight
+                    (obj["mass"] > -1) 
                 )
                                 
             elif name == 'muon':
                 selection = (
-                    (np.abs(obj.eta) < 2.4) & (obj.pt > 15)  &
-                    (obj['iso'] < 0.15) &
-                    (obj['isLoose']) &
-                    (obj.mass > -1)  
+                    (np.abs(obj["eta"]) < 2.3) &
+                    (obj["pt"] > 20) &
+                    (obj["iso"] < 0.15) &
+                    (obj["isTight"]) &
+                    (obj["mass"] > -1)  
                 )
                 
             elif name == 'medium_muon':
                 selection = (
-                    (np.abs(obj.eta) < 2.5) & 
-                    (obj.pt > 20)  &
-                    (obj['iso'] < 0.15) &
-                    (obj['isMedium']) &
-                    (obj.mass > -1) 
+                    (np.abs(obj["eta"]) < 2.3) & 
+                    (obj["pt"] > 20) &
+                    (obj["iso"] < 0.15) &
+                    (obj["isMedium"]) &
+                    (obj["mass"] > -1) 
                 )
 
             elif name == 'tight_muon':
                 selection = (
-                    (np.abs(obj.eta) < 2.4) & 
-                    (obj.pt > 20)  &
-                    (obj['iso'] < 0.15) &
-                    (obj['isTight']) &
-                    (obj.mass > -1) 
+                    (np.abs(obj.eta) < 2.3) & 
+                    (obj["pt"] > 20) &
+                    (obj["iso"] < 0.15) &
+                    (obj["isTight"]) &
+                    (obj["mass"] > -1) 
                 )
                 
             elif name == 'electron':
                 selection = (
-                    (np.abs(obj.eta) < 2.4) & (obj.pt > 10)  &
-
+                    (np.abs(obj["eta"]) < 2.4) & (obj["pt"] > 10)  &
                     (
-                        ((np.abs(obj.eta) < 1.4442) & (np.abs(obj['dxy']) < 0.05) & (np.abs(obj['dz']) < 0.1) ) 
-                        | ((np.abs(obj.eta) > 1.5660) & (np.abs(obj['dxy']) < 0.1) & (np.abs(obj['dz']) < 0.2) )
+                        ((np.abs(obj["eta"]) < 1.4442) & (np.abs(obj["dxy"]) < 0.05) & (np.abs(obj["dz"]) < 0.1) ) 
+                        | ((np.abs(obj["eta"]) > 1.5660) & (np.abs(obj["dxy"]) < 0.1) & (np.abs(obj["dz"]) < 0.2) )
                     ) & 
-                    (obj['cutbased']>=1) &
-                    (obj.mass >-1)        
+                    (obj["cutbased"] >= 1) &
+                    (obj["mass"] > -1)        
                 )
-        return obj[selection],selection
+
+        return obj[selection], selection
     
