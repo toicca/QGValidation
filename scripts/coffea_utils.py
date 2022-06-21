@@ -20,7 +20,7 @@ def ObjSelection(obj,name,year=2016,selection=None):
     if year != 2017 and year != 2016: #FixMe add other years
         sys.exit("ERROR: Only 2016 and 2017 supported")
 
-    obj_list = ['jet','electron','muon','PF','tight_muon','medium_muon']
+    obj_list = ['jet','jet_dijet','electron','muon','PF','tight_muon','medium_muon']
     
     if name not in obj_list and selection == None:
         sys.exit("ERROR: For non standard objects, provide a selection mask to be applied")
@@ -79,6 +79,14 @@ def ObjSelection(obj,name,year=2016,selection=None):
                 selection = (
                     (np.abs(obj["eta"]) < 4.7) & 
                     (obj["pt"] > 12)  & 
+                    (obj["jet_id"]==6) & #tight
+                    (obj["mass"] > -1) 
+                )
+
+            if name == 'jet_dijet':
+                selection = (
+                    (np.abs(obj["eta"]) < 4.7) & 
+                    (obj["pt"] > 15)  & 
                     (obj["jet_id"]==6) & #tight
                     (obj["mass"] > -1) 
                 )
