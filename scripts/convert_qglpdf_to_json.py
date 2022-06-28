@@ -14,6 +14,7 @@ evaluator1 = ext1.make_evaluator()
 
 num_keys = int(len(evaluator1.keys())/2) - 2
 
+counter = 1
 skip = ['_error', 'hpt', 'heta']
 for key in evaluator1.keys():
     if any(x in key for x in skip):
