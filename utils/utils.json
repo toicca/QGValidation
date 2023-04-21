@@ -45,7 +45,7 @@
             "QCD_Pt_3200toInf_TuneCP5_13TeV_pythia8_RunIISummer20UL17NanoAODv9-20UL17JMENano_106X_mc2017_realistic_v9-v1_NANOAODSIM" : 0.0001357
         },
         "nGenEvents" : {
-            "DYJetsToLL_M-50_TuneCP5_13TeV-madgraphMLM-pythia8_RunIISummer20UL17NanoAODv9-20UL17JMENano_106X_mc2017_realistic_v9-v1_NANOAODSIM" : 99428934,
+            "DYJetsToLL_M-50_TuneCP5_13TeV-madgraphMLM-pythia8_RunIISummer20UL17NanoAODv9-20UL17JMENano_106X_mc2017_realistic_v9-v1_NANOAODSIM" : 102941427,
             "QCD_HT50to100_TuneCP5_PSWeights_13TeV-madgraph-pythia8_RunIISummer20UL17NanoAODv9-20UL17JMENano_106X_mc2017_realistic_v9-v1_NANOAODSIM " : 26129826,
             "QCD_HT100to200_TuneCP5_PSWeights_13TeV-madgraph-pythia8_RunIISummer20UL17NanoAODv9-20UL17JMENano_106X_mc2017_realistic_v9-v1_NANOAODSIM" : 54705747,
             "QCD_HT200to300_TuneCP5_PSWeights_13TeV-madgraph-pythia8_RunIISummer20UL17NanoAODv9-20UL17JMENano_106X_mc2017_realistic_v9-v1_NANOAODSIM" : 42679193,

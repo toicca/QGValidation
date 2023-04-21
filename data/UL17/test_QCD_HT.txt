@@ -1,0 +1,1 @@
+/eos/cms/store/mc/RunIISummer20UL17NanoAODv9/QCD_HT300to500_TuneCP5_PSWeights_13TeV-madgraph-pythia8/NANOAODSIM/20UL17JMENano_106X_mc2017_realistic_v9-v1/260000/077C6E81-273B-474D-AA91-DFE2F1A9F93F.root
