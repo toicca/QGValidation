@@ -210,6 +210,7 @@ class DijetProcessor(processor.ProcessorABC):
             jets = events.JetPuppi
         else:
             jets = events.Jet
+        jets = events.Jet
 
         if hasattr(events, 'GenJet'):
             gen_jets = events.GenJet
@@ -592,16 +593,52 @@ class ZmmProcessor(processor.ProcessorABC):
         self.puppi = puppi
         self.jes_up = jes_up
         self.jes_down = jes_down
+        self.jer_up = jer_up
+        self.jer_down = jer_down
+
+        jer_mc_SF = 'Summer19UL17_JRV2_MC_SF_AK4PFchs'
+        jer_mc_PtResolution = 'Summer19UL17_JRV2_MC_PtResolution_AK4PFchs'
+        jec_mc_L1FastJet = 'Summer19UL17_V5_MC_L1FastJet_AK4PFchs'
+        jec_mc_L2Relative = 'Summer19UL17_V5_MC_L2Relative_AK4PFchs'
+        jec_mc_UncSources = 'RegroupedV2_Summer19UL17_V5_MC_UncertaintySources_AK4PFchs'
 
         coffea_base_path = os.environ['COFFEAHOME']
-        jes_unc = 'Summer19UL17_V5_MC_Total_AK4PFchs'
-        self.jes_evaluator = correctionlib.CorrectionSet.from_file('{}/utils/JERC/jet_jerc_UL17.json.gz'.format(coffea_base_path))[jes_unc]
+        jerc_extractor = extractor()
+        jerc_extractor.add_weight_sets([
+            '* * {}/utils/JERC/{}.txt'.format(coffea_base_path, jer_mc_SF),
+            '* * {}/utils/JERC/{}.txt'.format(coffea_base_path, jer_mc_PtResolution),
+            '* * {}/utils/JERC/{}.txt'.format(coffea_base_path, jec_mc_L1FastJet),
+            '* * {}/utils/JERC/{}.txt'.format(coffea_base_path, jec_mc_L2Relative),
+            '* * {}/utils/JERC/{}.junc.txt'.format(coffea_base_path, jec_mc_UncSources),
+            ])
+        jerc_extractor.finalize()
+        jerc_evaluator = jerc_extractor.make_evaluator()
+
+        self.JER_SF = JetResolutionScaleFactor(**{jer_mc_SF : jerc_evaluator[jer_mc_SF]})
+        self.JER_PtResolution = JetResolution(**{jer_mc_PtResolution : jerc_evaluator[jer_mc_PtResolution]})
+
+        jec_stack_names = [key for key in jerc_evaluator.keys()]
+        jec_inputs = {name: jerc_evaluator[name] for name in jec_stack_names}
+        jec_stack = JECStack(jec_inputs)
+
+        name_map = jec_stack.blank_name_map
+        name_map["JetPt"] = "pt"
+        name_map["JetMass"] = "mass"
+        name_map["JetEta"] = "eta"
+        name_map["JetA"] = "area"
+        name_map["ptGenJet"] = "pt_gen"
+        name_map["ptRaw"] = "pt_raw"
+        name_map["massRaw"] = "mass_raw"
+        name_map["Rho"] = "rho"
+
+        self.jet_corrector = CorrectedJetsFactory(name_map, jec_stack)
+
         self.qgl_evaluator = correctionlib.CorrectionSet.from_file('{}/utils/QGL/pdfQG_AK4chs_13TeV_UL17_ghosts.corr.json'.format(coffea_base_path))
         self.qgl_file = uproot.open('{}/utils/QGL/pdfQG_AK4chs_13TeV_UL17_ghosts.root'.format(coffea_base_path))
-        self.pileup_weights = from_uproot_THx('{}/utils/pileup/PU_weights_goldenJSON_69200ub_pythia8_UL17.root:weight'.format(coffea_base_path), flow='clamp')
-        self.pileup_weights_down = from_uproot_THx('{}/utils/pileup/PU_weights_goldenJSON_66000ub_pythia8_UL17.root:weight'.format(coffea_base_path), flow='clamp')
-        self.pileup_weights_up = from_uproot_THx('{}/utils/pileup/PU_weights_goldenJSON_72400ub_pythia8_UL17.root:weight'.format(coffea_base_path), flow='clamp')
-        
+        self.pileup_weights = from_uproot_THx('{}/utils/pileup/PU_weights_HLT_ZeroBias_69200ub_pythia8_UL17.root:weight'.format(coffea_base_path), flow='clamp')
+        self.pileup_weights_down = from_uproot_THx('{}/utils/pileup/PU_weights_HLT_ZeroBias_66000ub_pythia8_UL17.root:weight'.format(coffea_base_path), flow='clamp')
+        self.pileup_weights_up = from_uproot_THx('{}/utils/pileup/PU_weights_HLT_ZeroBias_72400ub_pythia8_UL17.root:weight'.format(coffea_base_path), flow='clamp')
+
     def process(self, events):
         output = self.output
         dataset = events.metadata['dataset']
@@ -614,89 +651,12 @@ class ZmmProcessor(processor.ProcessorABC):
         vector.register_awkward()
         # Properties per object
         if self.puppi:
-            jets = ak.zip(
-                {
-                'pt': events.JetPuppi_pt,
-                'eta': events.JetPuppi_eta,
-                'phi': events.JetPuppi_phi,
-                'mass': events.JetPuppi_mass,
-                'jet_id': events.JetPuppi_jetId, 
-                'partonFlavour': events.JetPuppi_partonFlavour if 'Jet_partonFlavour' in events.fields else ak.ones_like(events.Jet_jetId), #dummy flag for data
-                'hadronFlavour': events.JetPuppi_hadronFlavour if 'Jet_hadronFlavour' in events.fields else ak.ones_like(events.Jet_jetId),
-                'axis2': events.JetPuppi_qgl_axis2,
-                'ptD': events.JetPuppi_qgl_ptD,
-                'mult': events.JetPuppi_qgl_mult,
-                'rho': events.fixedGridRhoFastjetAll,
-                'deepFlavQG': events.JetPuppi_btagDeepFlavQG,
-                'deepFlavUDS': events.JetPuppi_btagDeepFlavUDS,
-                'deepFlavG': events.JetPuppi_btagDeepFlavG,
-                'deepFlavB': events.JetPuppi_btagDeepFlavB,
-                'deepFlavCvB': events.JetPuppi_btagDeepFlavCvB,
-                'deepFlavCvL': events.JetPuppi_btagDeepFlavCvL,
-                'particleNetAK4_QvsG': events.JetPuppi_particleNetAK4_QvsG,
-                'particleNetAK4_B': events.JetPuppi_particleNetAK4_B,
-                'particleNetAK4_CvsB': events.JetPuppi_particleNetAK4_CvsB,
-                'particleNetAK4_CvsL': events.JetPuppi_particleNetAK4_CvsL,
-                'genJetIdx': events.JetPuppi_genJetIdx if 'JetPuppi_genJetIdx' in events.fields else ak.ones_like(events.Jet_jetId), 
-                }, with_name='Momentum4D'
-                )
+            jets = events.JetPuppi
         else:
-            jets = ak.zip(
-                {
-                'pt': events.Jet_pt,
-                'eta': events.Jet_eta,
-                'phi': events.Jet_phi,
-                'mass': events.Jet_mass,
-                'jet_id': events.Jet_jetId,
-                'partonFlavour': events.Jet_partonFlavour if 'Jet_partonFlavour' in events.fields else ak.ones_like(events.Jet_jetId),
-                'hadronFlavour': events.Jet_hadronFlavour if 'Jet_hadronFlavour' in events.fields else ak.ones_like(events.Jet_jetId),
-                'axis2': events.Jet_qgl_axis2,
-                'ptD': events.Jet_qgl_ptD,
-                'mult': events.Jet_qgl_mult,
-                'rho': events.fixedGridRhoFastjetAll,
-                'deepFlavQG': events.Jet_btagDeepFlavQG,
-                'deepFlavUDS': events.Jet_btagDeepFlavUDS,
-                'deepFlavG': events.Jet_btagDeepFlavG,
-                'deepFlavB': events.Jet_btagDeepFlavB,
-                'deepFlavCvB': events.Jet_btagDeepFlavCvB,
-                'deepFlavCvL': events.Jet_btagDeepFlavCvL,
-                'particleNetAK4_QvsG': events.Jet_particleNetAK4_QvsG,
-                'particleNetAK4_B': events.Jet_particleNetAK4_B,
-                'particleNetAK4_CvsB': events.Jet_particleNetAK4_CvsB,
-                'particleNetAK4_CvsL': events.Jet_particleNetAK4_CvsL,
-                'genJetIdx': events.Jet_genJetIdx if 'Jet_genJetIdx' in events.fields else ak.ones_like(events.Jet_jetId), 
-                }, with_name='Momentum4D'
-                )
+            jets = events.Jet
 
-        muons = ak.zip(
-            {
-            'pt': events.Muon_pt,
-            'eta': events.Muon_eta,
-            'phi': events.Muon_phi,
-            'mass': events.Muon_mass,
-            'charge': events.Muon_charge,
-            'iso': events.Muon_pfRelIso04_all,
-            'dxy': events.Muon_dxy,
-            'dz': events.Muon_dz,            
-            'isTight': events.Muon_tightId,
-            'isMedium': events.Muon_mediumId,
-            'isLoose': events.Muon_looseId
-            }, with_name='Momentum4D'
-            )
-
-        electrons = ak.zip(
-            {
-            'pt': events.Electron_pt,
-            'eta': events.Electron_eta,
-            'phi': events.Electron_phi,
-            'mass': events.Electron_mass,
-            'charge': events.Electron_charge,
-            'dxy': events.Electron_dxy,
-            'iso': events.Electron_pfRelIso03_all,
-            'dz': events.Electron_dz,
-            'cutbased': events.Electron_cutBased
-            }, with_name='Momentum4D'
-            )
+        muons = events.Muon
+        electrons = events.Electron
 
         if filetype == 'mc':
             lumi_mask = np.ones(len(electrons), dtype=np.bool_) #dummy lumi mask for MC
@@ -706,14 +666,19 @@ class ZmmProcessor(processor.ProcessorABC):
             goldenJSON_path = os.path.join(os.environ['COFFEAHOME'],'data','json')
             lumi_path = '{}/Cert_294927-306462_13TeV_UL2017_Collisions17_GoldenJSON.txt'.format(goldenJSON_path) #FixMe: Add option for different years
             lumi_mask = LumiMask(lumi_path)(run,lumiblock)
-                    
-        nEvents = len(events.HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ_Mass8)
-        PV_npvs = events.PV_npvs
-        PV_npvsGood = events.PV_npvsGood
-        Pileup_nTrueInt = events.Pileup_nTrueInt if 'Pileup_nTrueInt' in events.fields else ak.ones_like(events.PV_npvs)
-        LHEPart_pdgId = events.LHEPart_pdgId if 'LHEPart_pdgId' in events.fields else ak.ones_like(events.PV_npvs)
-        LHEPart_status = events.LHEPart_status if 'LHEPart_status' in events.fields else ak.ones_like(events.PV_npvs)
-        PSWeight = events.PSWeight if 'PSWeight' in events.fields else ak.ones_like(events.PV_npvs)
+
+        nEvents = len(events.HLT.Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ_Mass8)
+        event_rho = events.fixedGridRhoFastjetAll
+        PV_npvs = events.PV.npvs
+        PV_npvsGood = events.PV.npvsGood
+
+        Pileup_nTrueInt = events.Pileup.nTrueInt if 'nTrueInt' in events.Pileup.fields else ak.ones_like(PV_npvs)
+        if 'Generator' in events.fields:
+            Generator_binvar = events.Generator.binvar if 'binvar' in events.Generator.fields else ak.ones_like(PV_npvs)
+        if 'LHE' in events.fields:
+            LHEPart_pdgId = events.LHEPart.pdgId if 'pdgId' in events.LHEPart.fields else ak.ones_like(PV_npvs)
+            LHEPart_status = events.LHEPart.status if 'status' in events.LHEPart.fields else ak.ones_like(PV_npvs)
+        PSWeight = events.PSWeight if 'PSWeight' in events.fields else ak.ones_like(PV_npvs)
 
         # This keeps track of how many events there are, as well as how many of each object exist in this events
         output['cutflow']['all events'] += nEvents
@@ -725,16 +690,16 @@ class ZmmProcessor(processor.ProcessorABC):
         # TRIGGER SELECTION #
         # # # # # # # # # # #
         
-        trigger_mask = (events.HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ_Mass8==1)
+        trigger_mask = (events.HLT.Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ_Mass8==1)
 
         # # # # # # # #
         # MET FILTERS #
         # # # # # # # #
 
         MET_mask = (
-                (events.Flag_goodVertices == 1) & (events.Flag_globalSuperTightHalo2016Filter == 1) & (events.Flag_HBHENoiseFilter==1) &
-                (events.Flag_HBHENoiseIsoFilter==1) & (events.Flag_EcalDeadCellTriggerPrimitiveFilter==1) & (events.Flag_BadPFMuonFilter==1) &
-                (events.Flag_BadPFMuonDzFilter==1) & (events.Flag_eeBadScFilter==1) & (events.Flag_ecalBadCalibFilter==1)
+                (events.Flag.goodVertices == 1) & (events.Flag.globalSuperTightHalo2016Filter == 1) & (events.Flag.HBHENoiseFilter==1) &
+                (events.Flag.HBHENoiseIsoFilter==1) & (events.Flag.EcalDeadCellTriggerPrimitiveFilter==1) & (events.Flag.BadPFMuonFilter==1) &
+                (events.Flag.BadPFMuonDzFilter==1) & (events.Flag.eeBadScFilter==1) & (events.Flag.ecalBadCalibFilter==1)
                 )
 
         # # # # # # # # # # #
@@ -742,7 +707,7 @@ class ZmmProcessor(processor.ProcessorABC):
         # # # # # # # # # # #
 
         muons, muon_selection = utils.ObjSelection(muons,'muon',2017)
-        electrons,_ = utils.ObjSelection(electrons,'electron',2017)
+        electrons, _ = utils.ObjSelection(electrons,'electron',2017)
         jets, _ = utils.ObjSelection(jets,'jet',2017)
 
         # Now we want to make sure no jets are within 0.4 delta-R of any muon.
@@ -762,7 +727,7 @@ class ZmmProcessor(processor.ProcessorABC):
         electron_mask = (ak.num(electrons) == 0)
         muon_mask = (ak.num(muons) == 2)
 
-        PV_z = events.PV_z
+        PV_z = events.PV.z
         if 'GenVtx_z' in events.fields:
             GenVtx_z = events.GenVtx_z
             vtx_mask = np.abs(GenVtx_z - PV_z) < 0.2
@@ -770,7 +735,6 @@ class ZmmProcessor(processor.ProcessorABC):
             vtx_mask = np.ones_like(len(PV_z), dtype=bool)
 
         event_mask = jet_mask & electron_mask & muon_mask & lumi_mask & trigger_mask & MET_mask & vtx_mask
-        # event_mask = jet_mask & electron_mask & muon_mask & lumi_mask & trigger_mask & MET_mask
 
         PV_npvs = PV_npvs[event_mask]
         PV_npvsGood = PV_npvsGood[event_mask]
@@ -785,24 +749,35 @@ class ZmmProcessor(processor.ProcessorABC):
         z_jets.sel = event_mask
         z_jets.apply_sel()
 
+        # Apply JECs to MC jets
         if filetype == 'mc':
-            # Apply JES uncertainties before event selection
-            if self.jes_up or self.jes_down:
-                jes_evaluator = self.jes_evaluator
-                flattened_jets, num_jets = ak.flatten(z_jets.jets), ak.num(z_jets.jets) # until correctionlib handles ak arrays we must flatten & unflatten
-                if self.jes_up:
-                    pt_var_up = 1 + jes_evaluator.evaluate(flattened_jets['eta'], flattened_jets['pt'])
-                    flattened_corr_pt_up = flattened_jets['pt']*pt_var_up
-                    corr_pt = ak.unflatten(flattened_corr_pt_up, num_jets)
-                    z_jets.jets['pt'] = corr_pt
-                if self.jes_down:
-                    pt_var_down = 1 - jes_evaluator.evaluate(flattened_jets['eta'], flattened_jets['pt'])
-                    flattened_corr_pt_down = flattened_jets['pt']*pt_var_down
-                    corr_pt = ak.unflatten(flattened_corr_pt_down, num_jets)
-                    z_jets.jets['pt'] = corr_pt
-                # Sort again by jet pT
-                sorted_pt_arg = ak.argsort(z_jets.jets['pt'], ascending=False)
-                z_jets.jets = z_jets.jets[sorted_pt_arg]
+            # Impose the requirement delta_r < 0.2 between reco jets and gen jets for the JER "scaling method"
+            genjet_delta_r = z_jets.jets.delta_r(z_jets.jets.matched_gen)
+            matched_gen_pt = ak.where(genjet_delta_r > 0.2, 0., z_jets.jets.matched_gen['pt'])
+
+            # Add the missing variables needed for energy corrections
+            z_jets.jets['pt_raw'] = (1 - z_jets.jets['rawFactor'])*z_jets.jets['pt']
+            z_jets.jets['mass_raw'] = (1 - z_jets.jets['rawFactor'])*z_jets.jets['mass']
+            z_jets.jets['pt_gen'] = ak.values_astype(ak.fill_none(matched_gen_pt, 0.), np.float32)
+            z_jets.jets['rho'] = ak.broadcast_arrays(event_rho, z_jets.jets['pt'])[0]
+
+            jerc_cache = cachetools.Cache(np.inf)
+            z_jets.jets = self.jet_corrector.build(z_jets.jets, jerc_cache)
+
+            # Apply JES and JER variations before event selection
+            if self.jes_up:
+                z_jets.jets = z_jets.jets.JES_Total.up
+            elif self.jes_down:
+                z_jets.jets = z_jets.jets.JES_Total.down
+
+            if self.jer_up:
+                z_jets.jets = z_jets.jets.JER.up
+            elif self.jer_down:
+                z_jets.jets = z_jets.jets.JER.down
+
+            # Sort again by jet pT
+            sorted_pt_arg = ak.argsort(z_jets.jets['pt'], ascending=False)
+            z_jets.jets = z_jets.jets[sorted_pt_arg]
 
         leading_jet_pt = z_jets.jets['pt'][:,0]
         z_charge = z_jets.muons[:,0].charge+z_jets.muons[:,1].charge
@@ -830,7 +805,6 @@ class ZmmProcessor(processor.ProcessorABC):
         genjet_match_mask = z_jets.jets[:,0].genJetIdx >= 0
 
         # Apply Z+Jets selection
-        # dilepton_mask = ak.flatten(mass_mask) & charge_mask & deltaphi_mask & subleading_mask & ak.flatten(z_pt_mask)
         dilepton_mask = ak.flatten(mass_mask) & charge_mask & deltaphi_mask & subleading_mask & ak.flatten(z_pt_mask) & genjet_match_mask
         z_jets.sel = dilepton_mask
         z_jets.apply_sel()
@@ -865,13 +839,17 @@ class ZmmProcessor(processor.ProcessorABC):
         find_eta_bin = lambda x : find_qgl_bin(qgl_eta_dict, x)
         find_pt_bin = lambda x : find_qgl_bin(qgl_pt_dict, x)
 
-        z_jets.jets['rho_bin'] = list(map(find_rho_bin, z_jets.jets['rho'][:,0]))
-        z_jets.jets['eta_bin'] = list(map(find_eta_bin, np.abs(z_jets.jets['eta'][:,0])))
-        z_jets.jets['pt_bin'] = list(map(find_pt_bin, z_jets.jets['pt'][:,0]))
-
+        # Only pick the variables relevant for computing QGL
+        qgl_variables = ['pt', 'eta', 'rho', 'qgl_axis2', 'qgl_mult', 'qgl_ptD']
         qgl_evaluator = self.qgl_evaluator
-        leading_jets = z_jets.jets[:,0].to_list()
-        z_jets.jets['qgl_new'] = [compute_jet_qgl(jet, qgl_evaluator) for jet in leading_jets]
+
+        leading_jets = ak.zip({var: z_jets.jets[:,0][var] for var in qgl_variables})
+
+        leading_jets['rho_bin'] = np.fromiter(map(find_rho_bin, leading_jets['rho']), dtype=int)
+        leading_jets['eta_bin'] = np.fromiter(map(find_eta_bin, np.abs(leading_jets['eta'])), dtype=int)
+        leading_jets['pt_bin'] = np.fromiter(map(find_pt_bin, leading_jets['pt']), dtype=int)
+
+        z_jets.jets['qgl_new'] = np.fromiter(map(lambda jet: compute_jet_qgl(jet, qgl_evaluator), leading_jets), dtype=float)
 
         n_z_jets = len(z_jets.jets)
         if n_z_jets > 0:
@@ -902,7 +880,9 @@ class ZmmProcessor(processor.ProcessorABC):
                 PU_weight = pileup_weight_evaluator.evaluate(Pileup_nTrueInt)
                 PU_weight_up = pileup_weight_up_evaluator.evaluate(Pileup_nTrueInt)
                 PU_weight_down = pileup_weight_down_evaluator.evaluate(Pileup_nTrueInt)
-                if len(np.unique(events.nPSWeight))==1 and np.unique(events.nPSWeight[0])==44:
+
+                nPSWeight = [len(x) for x in events.PSWeight]
+                if len(np.unique(nPSWeight))==1 and np.unique(nPSWeight[0])==44:
                     FSR_weight_down = PSWeight[:,2].to_numpy()
                     FSR_weight_up = PSWeight[:,3].to_numpy()
                     ISR_weight_down = PSWeight[:,24].to_numpy()
@@ -910,9 +890,9 @@ class ZmmProcessor(processor.ProcessorABC):
                 else:
                     sys.exit('ERROR! PSWeights not assigned correctly, as there aren\'t 44 weights.')
 
-                L1prefiring_weight = events['L1PreFiringWeight_Nom'][event_mask][dilepton_mask].to_numpy()
-                L1prefiring_weight_up = events['L1PreFiringWeight_Up'][event_mask][dilepton_mask].to_numpy()
-                L1prefiring_weight_down = events['L1PreFiringWeight_Dn'][event_mask][dilepton_mask].to_numpy()
+                L1prefiring_weight = events.L1PreFiringWeight.Nom[event_mask][dilepton_mask].to_numpy()
+                L1prefiring_weight_up = events.L1PreFiringWeight.Up[event_mask][dilepton_mask].to_numpy()
+                L1prefiring_weight_down = events.L1PreFiringWeight.Dn[event_mask][dilepton_mask].to_numpy()
 
                 LHEPart_isGluon = np.abs(LHEPart_pdgId == 21)
                 LHEPart_isIncoming = LHEPart_status == -1
