@@ -79,8 +79,9 @@ def main():
 
     JMENanoSchema = NanoAODSchema
     JMENanoSchema.mixins["JetPuppi"] = "Jet"
+    JMENanoSchema.all_cross_references["JetPuppi_genJetIdx"] = "GenJet"
 
-    job_executor = processor.FuturesExecutor(workers=opt.workers, mergepool=opt.workers)
+    job_executor = processor.FuturesExecutor(workers=opt.workers, mergepool=opt.workers, merging=True)
     run = processor.Runner(
                         executor = job_executor,
                         maxchunks = opt.maxchunk,
@@ -88,22 +89,24 @@ def main():
                         schema=NanoAODSchema
                         )
     output = run(fileset, treename='Events', processor_instance=qg_processor)
-    
-    for flow in output['cutflow']:
-        print(flow, output['cutflow'][flow])
-    del output['cutflow']
 
     if not os.path.exists(os.path.join(os.environ['COFFEAHOME'],'output',opt.out_dir)):
         os.makedirs(os.path.join(os.environ['COFFEAHOME'],'output',opt.out_dir))
 
-    branch_dict = {}
-    for var in output:
-        branch_dict[var] = np.float32
-        output[var] = output[var].value
+    cutflow_dict = {cutflow : output['cutflow'][cutflow] for cutflow in output['cutflow']}
+    for cutflow, value in cutflow_dict.items():
+        print(cutflow, value)
 
     with uproot.recreate(os.path.join(os.environ['COFFEAHOME'],'output',opt.out_dir,fout_name)) as fout:
+        fout['Cutflow'] = {cutflow : [output['cutflow'][cutflow]] for cutflow in output['cutflow']}
+        del output['cutflow']
+
+        branch_dict = {}
+        for var in output:
+            branch_dict[var] = np.float32
+            output[var] = output[var].value
         fout.mktree('Events', branch_dict)
         fout['Events'].extend(output)
-
+    
 if __name__ == '__main__':
     main()
