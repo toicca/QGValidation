@@ -13,7 +13,7 @@ from optparse import OptionParser
 def main():
     parser = OptionParser(usage='%prog [opt]')
     parser.add_option('--workers', dest='workers', type='int', default=1, help='Number of workers to use. Default: %default')
-    parser.add_option('--chunk', dest='chunk', type='int', default=1e4, help='Chunk size. Default %default')
+    parser.add_option('--chunk', dest='chunk', type='int', default=4096, help='Chunk size. Default %default')
     parser.add_option('--maxchunk', dest='maxchunk', type='int', default=None, help='Maximum number of chunks. Default: %default')
     parser.add_option('--channel', dest='channel', type='string', default='zmm', help='Specify which channel to run [zmm/dijet]. Default: %default')
     parser.add_option('--files', dest='files', type='string', default='', help='Specify .txt file containing paths to JMENano files.')
@@ -40,7 +40,7 @@ def main():
         sys.exit('ERROR: Cannot do JER up and down variations simulatenously!')
     if opt.jer_up:
         opt.out_id += '_jer_up'
-    elif opt.jes_down:
+    elif opt.jer_down:
         opt.out_id += '_jer_down'
 
     if opt.run_samples == 'data':
@@ -49,6 +49,7 @@ def main():
         fout_name = 'mc_{}.root'.format(opt.out_id)
     else:
         sys.exit('ERROR: You must specify what kind of dataset you want to run [--run]')
+
     print('Reading files from {}'.format(opt.files))    
     files = []
     with open(os.path.join(opt.files),'r') as fread:
