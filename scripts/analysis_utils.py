@@ -75,7 +75,6 @@ def ObjSelection(obj,name,year=2016,selection=None):
                 
             if name == 'jet':
                 selection = (
-                    # (np.abs(obj["eta"]) < 2.5) & #eta determined by b-tag SF limits for now
                     (np.abs(obj["eta"]) < 4.7) &
                     (obj["pt"] > 20)  & 
                     (obj["jetId"]==6) & #tight
@@ -86,8 +85,8 @@ def ObjSelection(obj,name,year=2016,selection=None):
                 selection = (
                     (np.abs(obj["eta"]) < 2.3) &
                     (obj["pt"] > 20) &
-                    (obj["iso"] < 0.15) &
-                    (obj["isTight"]) &
+                    (obj["pfRelIso04_all"] < 0.15) &
+                    (obj["tightId"]) &
                     (obj["mass"] > -1)  
                 )
                 
@@ -95,8 +94,8 @@ def ObjSelection(obj,name,year=2016,selection=None):
                 selection = (
                     (np.abs(obj["eta"]) < 2.3) & 
                     (obj["pt"] > 20) &
-                    (obj["iso"] < 0.15) &
-                    (obj["isMedium"]) &
+                    (obj["pfRelIso04_all"] < 0.15) &
+                    (obj["mediumId"]) &
                     (obj["mass"] > -1) 
                 )
 
@@ -104,8 +103,8 @@ def ObjSelection(obj,name,year=2016,selection=None):
                 selection = (
                     (np.abs(obj.eta) < 2.3) & 
                     (obj["pt"] > 20) &
-                    (obj["iso"] < 0.15) &
-                    (obj["isTight"]) &
+                    (obj["pfRelIso04_all"] < 0.15) &
+                    (obj["tightId"]) &
                     (obj["mass"] > -1) 
                 )
                 
@@ -116,7 +115,7 @@ def ObjSelection(obj,name,year=2016,selection=None):
                         ((np.abs(obj["eta"]) < 1.4442) & (np.abs(obj["dxy"]) < 0.05) & (np.abs(obj["dz"]) < 0.1) ) 
                         | ((np.abs(obj["eta"]) > 1.5660) & (np.abs(obj["dxy"]) < 0.1) & (np.abs(obj["dz"]) < 0.2) )
                     ) & 
-                    (obj["cutbased"] >= 1) &
+                    (obj["cutBased"] >= 1) &
                     (obj["mass"] > -1)        
                 )
 
