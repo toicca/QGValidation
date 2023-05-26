@@ -356,7 +356,7 @@ class DijetProcessor(processor.ProcessorABC):
         dijet_mask = deltaphi_mask & subsubleading_mask & pt_balance_mask & genjet_match_mask
         dijet.sel = dijet_mask
         dijet.apply_sel()
-        output['cutflow']['Dijet selection'] += len(dijet.jets)
+        output['cutflow']['dijet selection'] += len(dijet.jets)
 
         alpha = alpha[dijet_mask]
         PV_npvs = PV_npvs[dijet_mask]
@@ -545,7 +545,7 @@ class DijetProcessor(processor.ProcessorABC):
 
 # Processor for z+jets analysis
 class ZmmProcessor(processor.ProcessorABC):
-    def __init__(self, puppi, jes_up, jes_down):
+    def __init__(self, puppi, jes_up, jes_down, jer_up, jer_down):        
         self.output = {
             'cutflow' : processor.defaultdict_accumulator(int), 
             'weight': processor.column_accumulator(np.array([])),
@@ -682,7 +682,7 @@ class ZmmProcessor(processor.ProcessorABC):
 
         # This keeps track of how many events there are, as well as how many of each object exist in this events
         output['cutflow']['all events'] += nEvents
-        output['cutflow']['all chs jets'] += ak.num(jets).to_numpy().sum()
+        output['cutflow']['all jets'] += ak.num(jets).to_numpy().sum()
         output['cutflow']['all muons'] += ak.num(muons).to_numpy().sum()
         output['cutflow']['all electrons'] += ak.num(electrons).to_numpy().sum()
 
@@ -705,19 +705,19 @@ class ZmmProcessor(processor.ProcessorABC):
         # # # # # # # # # # #
         # OBJECT SELECTIONS #
         # # # # # # # # # # #
-
+        
         muons, muon_selection = utils.ObjSelection(muons,'muon',2017)
         electrons, _ = utils.ObjSelection(electrons,'electron',2017)
         jets, _ = utils.ObjSelection(jets,'jet',2017)
 
         # Now we want to make sure no jets are within 0.4 delta-R of any muon.
         cross_jmu = ak.cartesian([jets, muons], nested=True)
-        check_jmu = ak.all((cross_jmu.slot0.deltaR(cross_jmu.slot1) > 0.4), axis=-1)
+        check_jmu = ak.all((cross_jmu.slot0.delta_r(cross_jmu.slot1) > 0.4), axis=-1)
         jets = jets[(check_jmu)&(jets.mass>-1)]
 
-        output['cutflow']['cleaned electrons'] += ak.num(electrons).to_numpy().sum()
+        output['cutflow']['cleaned jets'] += ak.num(jets).to_numpy().sum()
         output['cutflow']['cleaned muons'] += ak.num(muons).to_numpy().sum()
-        output['cutflow']['cleaned chs jets'] += ak.num(jets).to_numpy().sum()
+        output['cutflow']['cleaned electrons'] += ak.num(electrons).to_numpy().sum()
 
         # # # # # # # # # #
         # EVENT SELECTION #
@@ -736,6 +736,7 @@ class ZmmProcessor(processor.ProcessorABC):
 
         event_mask = jet_mask & electron_mask & muon_mask & lumi_mask & trigger_mask & MET_mask & vtx_mask
 
+        event_rho = event_rho[event_mask]
         PV_npvs = PV_npvs[event_mask]
         PV_npvsGood = PV_npvsGood[event_mask]
         Pileup_nTrueInt = Pileup_nTrueInt[event_mask]
@@ -787,7 +788,7 @@ class ZmmProcessor(processor.ProcessorABC):
         z_cand = z_cand.slot0 + z_cand.slot1
 
         cross_jz = ak.cartesian([z_jets.jets, z_cand])
-        z_jet_deltaphi = cross_jz.slot0.deltaphi(cross_jz.slot1)
+        z_jet_deltaphi = cross_jz.slot0.delta_phi(cross_jz.slot1)
         deltaphi_mask = np.abs(z_jet_deltaphi[:,0]) > 2.7
 
         mass_mask = (z_cand.mass > 71.2) & (z_cand.mass < 111.2)
@@ -808,7 +809,7 @@ class ZmmProcessor(processor.ProcessorABC):
         dilepton_mask = ak.flatten(mass_mask) & charge_mask & deltaphi_mask & subleading_mask & ak.flatten(z_pt_mask) & genjet_match_mask
         z_jets.sel = dilepton_mask
         z_jets.apply_sel()
-        output['cutflow']['Dilepton selection'] += len(z_jets.jets)
+        output['cutflow']['dilepton selection'] += len(z_jets.jets)
 
         alpha = alpha[dilepton_mask]
         PV_npvs = PV_npvs[dilepton_mask]
@@ -935,15 +936,15 @@ class ZmmProcessor(processor.ProcessorABC):
             output['Jet_phi'] += processor.column_accumulator(np.reshape(z_jets.jets['phi'][:,0].to_numpy(), (n_z_jets,)))
             output['Jet_mass'] += processor.column_accumulator(np.reshape(z_jets.jets['mass'][:,0].to_numpy(), (n_z_jets,)))
             output['Jet_qgl_new'] += processor.column_accumulator(np.reshape(z_jets.jets['qgl_new'][:,0].to_numpy(), (n_z_jets,)))
-            output['Jet_qgl_axis2'] += processor.column_accumulator(np.reshape(z_jets.jets['axis2'][:,0].to_numpy(), (n_z_jets,)))
-            output['Jet_qgl_ptD'] += processor.column_accumulator(np.reshape(z_jets.jets['ptD'][:,0].to_numpy(), (n_z_jets,)))
-            output['Jet_qgl_mult'] += processor.column_accumulator(np.reshape(z_jets.jets['mult'][:,0].to_numpy(), (n_z_jets,)))
-            output['Jet_btagDeepFlavUDS'] += processor.column_accumulator(np.reshape(z_jets.jets['deepFlavUDS'][:,0].to_numpy(), (n_z_jets,)))
-            output['Jet_btagDeepFlavQG'] += processor.column_accumulator(np.reshape(z_jets.jets['deepFlavQG'][:,0].to_numpy(), (n_z_jets,)))
-            output['Jet_btagDeepFlavG'] += processor.column_accumulator(np.reshape(z_jets.jets['deepFlavG'][:,0].to_numpy(), (n_z_jets,)))
-            output['Jet_btagDeepFlavB'] += processor.column_accumulator(np.reshape(z_jets.jets['deepFlavB'][:,0].to_numpy(), (n_z_jets,)))
-            output['Jet_btagDeepFlavCvB'] += processor.column_accumulator(np.reshape(z_jets.jets['deepFlavCvB'][:,0].to_numpy(), (n_z_jets,)))
-            output['Jet_btagDeepFlavCvL'] += processor.column_accumulator(np.reshape(z_jets.jets['deepFlavCvL'][:,0].to_numpy(), (n_z_jets,)))
+            output['Jet_qgl_axis2'] += processor.column_accumulator(np.reshape(z_jets.jets['qgl_axis2'][:,0].to_numpy(), (n_z_jets,)))
+            output['Jet_qgl_ptD'] += processor.column_accumulator(np.reshape(z_jets.jets['qgl_ptD'][:,0].to_numpy(), (n_z_jets,)))
+            output['Jet_qgl_mult'] += processor.column_accumulator(np.reshape(z_jets.jets['qgl_mult'][:,0].to_numpy(), (n_z_jets,)))
+            output['Jet_btagDeepFlavUDS'] += processor.column_accumulator(np.reshape(z_jets.jets['btagDeepFlavUDS'][:,0].to_numpy(), (n_z_jets,)))
+            output['Jet_btagDeepFlavQG'] += processor.column_accumulator(np.reshape(z_jets.jets['btagDeepFlavQG'][:,0].to_numpy(), (n_z_jets,)))
+            output['Jet_btagDeepFlavG'] += processor.column_accumulator(np.reshape(z_jets.jets['btagDeepFlavG'][:,0].to_numpy(), (n_z_jets,)))
+            output['Jet_btagDeepFlavB'] += processor.column_accumulator(np.reshape(z_jets.jets['btagDeepFlavB'][:,0].to_numpy(), (n_z_jets,)))
+            output['Jet_btagDeepFlavCvB'] += processor.column_accumulator(np.reshape(z_jets.jets['btagDeepFlavCvB'][:,0].to_numpy(), (n_z_jets,)))
+            output['Jet_btagDeepFlavCvL'] += processor.column_accumulator(np.reshape(z_jets.jets['btagDeepFlavCvL'][:,0].to_numpy(), (n_z_jets,)))
             output['Jet_particleNetAK4_QvsG'] += processor.column_accumulator(np.reshape(z_jets.jets['particleNetAK4_QvsG'][:,0].to_numpy(), (n_z_jets,)))
             output['Jet_particleNetAK4_B'] += processor.column_accumulator(np.reshape(z_jets.jets['particleNetAK4_B'][:,0].to_numpy(), (n_z_jets,)))
             output['Jet_particleNetAK4_CvsB'] += processor.column_accumulator(np.reshape(z_jets.jets['particleNetAK4_CvsB'][:,0].to_numpy(), (n_z_jets,)))
