@@ -1,31 +1,40 @@
-# QGValidation
-Repository for QG validation and scale factors
+# QG Validation
+Repository for QG tagger validation and scale factors
 
-This repository uses coffea to read nanoAOD files and produce data and MC validation plots
-To install the required packages first run:
+This framework uses Python and coffea to read JMENano files and produce data and MC validation plots.
+**Note: Currently the processing can only be done locally. LXPLUS implementation is yet to be done.**
 
+The easiest solution is to install the required Python packages is to use [Miniconda](https://docs.conda.io/projects/miniconda/en/latest/).
+
+Assuming that you are using Miniconda, initialze the setup by running:
 ```bash
 source init_setup.sh
 ```
-This command should install everything needed. If you already installed the required packages, you just need to source ```setup.sh``` everytime you start a new session
-
-# Running the code
-
-The script ```analysis_data.py``` performs the event selection with coffea. To test the script run:
-
+This command should install everything needed. Tihs only needs to be done once. When starting a new session just run:
 ```bash
-cd $COFFEAHOME/scripts
-python analysis_data.py --maxchunk 2 --version test root://cms-xrd-global.cern.ch//store/group/phys_jetmet/JMEnanoV01/UL17/DoubleMuon/Run2017B-09Aug2019_UL2017-v1_JMEnanoV1/201026_100435/0000/step1_NANO_10.root
+source activate_setup.sh
 ```
-If everything works, there should be a root files called ```test.root``` under the folder ```pods```. 
-Run 
+This script will set the correct shell environment variables.
 
+# Quark-Gluon Likelihood (QGL)
+
+The QGL value for each jet needs to be calculated separately, since the JMENano samples do not necessarily have the correct QGL training. The QGL trainings are located in `utils/QGL/`. Note that they are here in ROOT format, which needs to be converted to JSON with the `utils/QGL/convert_qgl_pdf_to_json.py` script.
 ```bash
-python analysis_data.py -h
+cd $COFFEAHOME/utils/QGL/
+python convert_qgl_pdf_to_json.py QGL_FILE.root
 ```
+The JSON files are not directly contained in the repository because of their relatively large size. Running the file conversion script is quite slow, but it only needs to be done once per training.
 
-for additional options. To check the definitions for the objects used during the selection, open the file ```coffea_utils.py```.
+# Running an analysis
 
-To instead load a list of files, first create a list under the folder ```data``` and load it from the main analysis code.
+There are multiple components involved in running the dijet/Z+jets analyses.
 
-Finally, an options to run the code with ```parsl``` support is also given. The current code is set to be run in a ```slurm``` system and needs to be modified in case a different batch system is used.
+* The `$COFFEAHOME/scripts/run_qg_analysis.py` script is used for starting the processing.
+* The Z+jets and dijet channel analyses are defined in `$COFFEAHOME/scripts/qg_processors.py`.
+* The object selections are defined in `$COFFEAHOME/scripts/analysis_utils.py`.
+* The processing script can be easily run with config files located in `$COFFEAHOME/scripts/config`.
+* The list of files to be processed are contained as .txt files in `$COFFEAHOME/data`.
+
+Certain necessary auxiliary files are located in `$COFFEAHOME/utils`. These include jet energy corrections, PU profiles, and QGL trainings, as well as the `utils.json` file that contains the MC sample cross sections, effective luminosities, and the numbers of generated events in each MC sample.
+
+As of right now, the year-dependent variables are unfortunately hard-coded into the `qg_processors.py` script. This will be changed in the near-future.
