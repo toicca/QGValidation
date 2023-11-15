@@ -212,9 +212,6 @@ class DijetProcessor(processor.ProcessorABC):
             jets = events.Jet
         jets = events.Jet
 
-        if hasattr(events, 'GenJet'):
-            gen_jets = events.GenJet
-
         if filetype == 'mc':            
             lumi_mask = np.ones(len(jets), dtype=np.bool_) # dummy lumi mask for MC
         else:
@@ -228,7 +225,7 @@ class DijetProcessor(processor.ProcessorABC):
         event_rho = events.fixedGridRhoFastjetAll
         PV_npvs = events.PV.npvs
         PV_npvsGood = events.PV.npvsGood
-        Pileup_nTrueInt = events.Pileup.nTrueInt if 'nTrueInt' in events.Pileup.fields else ak.ones_like(PV_npvs)
+        Pileup_nTrueInt = events.Pileup.nTrueInt if 'Pileup' in events.fields else ak.ones_like(PV_npvs)
         if 'Generator' in events.fields:
             Generator_binvar = events.Generator.binvar if 'binvar' in events.Generator.fields else ak.ones_like(PV_npvs)
         if 'LHE' in events.fields:
@@ -237,6 +234,13 @@ class DijetProcessor(processor.ProcessorABC):
             LHEPart_pdgId = events.LHEPart.pdgId if 'pdgId' in events.LHEPart.fields else ak.ones_like(PV_npvs)
             LHEPart_status = events.LHEPart.status if 'status' in events.LHEPart.fields else ak.ones_like(PV_npvs)
         PSWeight = events.PSWeight if 'PSWeight' in events.fields else ak.ones_like(PV_npvs)
+
+        if filetype == 'data':            
+            Generator_binvar = ak.ones_like(PV_npvs)
+            LHE_HT = ak.ones_like(PV_npvs)
+            LHE_HTIncoming = ak.ones_like(PV_npvs)
+            LHEPart_pdgId = ak.ones_like(PV_npvs)
+            LHEPart_status = ak.ones_like(PV_npvs)
 
         # print('fsr:murfac=0.5: {}'.format(PSWeight[0][2]))
         # print('fsr:murfac=2.0: {}'.format(PSWeight[0][3]))
@@ -297,7 +301,6 @@ class DijetProcessor(processor.ProcessorABC):
 
         dijet = Channel('dijet')
         dijet.jets = jets
-        dijet.gen_jets = gen_jets
         dijet.sel = event_mask
         dijet.apply_sel()
 
@@ -331,10 +334,13 @@ class DijetProcessor(processor.ProcessorABC):
             sorted_pt_arg = ak.argsort(dijet.jets['pt'], ascending=False)
             dijet.jets = dijet.jets[sorted_pt_arg]
 
-        # GenJet matching
-        leading_jet_genJetIdx = dijet.jets[:,0].genJetIdx
-        subleading_jet_genJetIdx = dijet.jets[:,1].genJetIdx
-        genjet_match_mask = ak.all([(leading_jet_genJetIdx >= 0), (subleading_jet_genJetIdx >= 0)], axis=0)
+            # GenJet matching
+            leading_jet_genJetIdx = dijet.jets[:,0].genJetIdx
+            subleading_jet_genJetIdx = dijet.jets[:,1].genJetIdx
+            genjet_match_mask = ak.all([(leading_jet_genJetIdx >= 0), (subleading_jet_genJetIdx >= 0)], axis=0)
+        else:
+            dijet.jets['rho'] = ak.broadcast_arrays(event_rho, dijet.jets['pt'])[0]
+            genjet_match_mask = np.ones(len(dijet.jets), dtype=np.bool_)
 
         deltaphi_mask = np.abs(dijet.jets[:,0].delta_phi(dijet.jets[:,1])) > 2.7
 
@@ -672,13 +678,18 @@ class ZmmProcessor(processor.ProcessorABC):
         PV_npvs = events.PV.npvs
         PV_npvsGood = events.PV.npvsGood
 
-        Pileup_nTrueInt = events.Pileup.nTrueInt if 'nTrueInt' in events.Pileup.fields else ak.ones_like(PV_npvs)
+        Pileup_nTrueInt = events.Pileup.nTrueInt if 'Pileup' in events.fields else ak.ones_like(PV_npvs)
         if 'Generator' in events.fields:
             Generator_binvar = events.Generator.binvar if 'binvar' in events.Generator.fields else ak.ones_like(PV_npvs)
         if 'LHE' in events.fields:
             LHEPart_pdgId = events.LHEPart.pdgId if 'pdgId' in events.LHEPart.fields else ak.ones_like(PV_npvs)
             LHEPart_status = events.LHEPart.status if 'status' in events.LHEPart.fields else ak.ones_like(PV_npvs)
         PSWeight = events.PSWeight if 'PSWeight' in events.fields else ak.ones_like(PV_npvs)
+
+        if filetype == 'data':            
+            Generator_binvar = ak.ones_like(PV_npvs)
+            LHEPart_pdgId = ak.ones_like(PV_npvs)
+            LHEPart_status = ak.ones_like(PV_npvs)
 
         # This keeps track of how many events there are, as well as how many of each object exist in this events
         output['cutflow']['all events'] += nEvents
@@ -779,6 +790,8 @@ class ZmmProcessor(processor.ProcessorABC):
             # Sort again by jet pT
             sorted_pt_arg = ak.argsort(z_jets.jets['pt'], ascending=False)
             z_jets.jets = z_jets.jets[sorted_pt_arg]
+        else:
+            z_jets.jets['rho'] = ak.broadcast_arrays(event_rho, z_jets.jets['pt'])[0]
 
         leading_jet_pt = z_jets.jets['pt'][:,0]
         z_charge = z_jets.muons[:,0].charge+z_jets.muons[:,1].charge
@@ -803,7 +816,10 @@ class ZmmProcessor(processor.ProcessorABC):
 
         z_pt_mask = z_cand.pt > 15
 
-        genjet_match_mask = z_jets.jets[:,0].genJetIdx >= 0
+        if filetype == 'mc':
+            genjet_match_mask = z_jets.jets[:,0].genJetIdx >= 0
+        else:
+            genjet_match_mask = np.ones(len(z_jets.jets), dtype=np.bool_)
 
         # Apply Z+Jets selection
         dilepton_mask = ak.flatten(mass_mask) & charge_mask & deltaphi_mask & subleading_mask & ak.flatten(z_pt_mask) & genjet_match_mask

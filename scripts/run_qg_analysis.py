@@ -18,7 +18,7 @@ def main():
     parser.add_option('--channel', dest='channel', type='string', default='zmm', help='Specify which channel to run [zmm/dijet]. Default: %default')
     parser.add_option('--files', dest='files', type='string', default='', help='Specify .txt file containing paths to JMENano files.')
     parser.add_option('--run', dest='run_samples', type='string', default='data', help='Specify which samples to run [data/mc/all]. Default: %default')
-    parser.add_option('--out_folder', dest='out_dir', type='string', default='UL17/041323', help='Output subdirectory to which the data is stored. Default: %default') #
+    parser.add_option('--out_dir', dest='out_dir', type='string', default='UL17', help='Output subdirectory to which the data is stored. Default: %default')
     parser.add_option('--out_id', dest='out_id', type='string', default='', help='ID for output file.')
     parser.add_option('--puppi', dest='puppi', action='store_true', default=False, help='Option for processing PUPPI jets. Default: %default')
     parser.add_option('--jes_up', dest='jes_up', action='store_true', default=False, help='Option for processing JES up variations. Default: %default')
@@ -27,17 +27,19 @@ def main():
     parser.add_option('--jer_down', dest='jer_down', action='store_true', default=False, help='Option for processing JES down variations. Default: %default')
     (opt, args) = parser.parse_args()
     
-    if 'COFFEAHOME' not in os.environ:
+    try:
+        os.environ['COFFEAHOME']
+    except:
         sys.exit('ERROR: Enviroment variables not set. Run activate_setup.sh first!')
 
     if opt.jes_up and opt.jes_down:
-        sys.exit('ERROR: Cannot do JES up and down variations simulatenously!')
+        sys.exit('ERROR: Cannot do JES up and down variations simultaneously!')
     if opt.jes_up:
         opt.out_id += '_jes_up'
     elif opt.jes_down:
         opt.out_id += '_jes_down'
     if opt.jer_up and opt.jer_down:
-        sys.exit('ERROR: Cannot do JER up and down variations simulatenously!')
+        sys.exit('ERROR: Cannot do JER up and down variations simultaneously!')
     if opt.jer_up:
         opt.out_id += '_jer_up'
     elif opt.jer_down:

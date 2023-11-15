@@ -16,8 +16,8 @@ def ObjSelection(obj,name,year=2016,selection=None):
 
     Returns: obj array with selection applied '''
 
-    if year != 2017 and year != 2016: #FixMe add other years
-        sys.exit("ERROR: Only 2016 and 2017 supported")
+    if year not in [2016, 2017, 2018]:
+        sys.exit("ERROR: Only 2016--2018 supported")
 
     obj_list = ['jet','jet_dijet','electron','muon','PF','tight_muon','medium_muon']
     
@@ -72,7 +72,6 @@ def ObjSelection(obj,name,year=2016,selection=None):
                 )
                 
         if year == 2017:
-                
             if name == 'jet':
                 selection = (
                     (np.abs(obj["eta"]) < 4.7) &
