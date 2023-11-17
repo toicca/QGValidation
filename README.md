@@ -10,7 +10,7 @@ Assuming that you are using Miniconda, initialze the setup by running:
 ```bash
 source init_setup.sh
 ```
-This command should install everything needed. Tihs only needs to be done once. When starting a new session just run:
+This command should install everything needed. This only needs to be done once. When starting a new session just run:
 ```bash
 source activate_setup.sh
 ```
