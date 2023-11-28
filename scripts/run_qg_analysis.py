@@ -46,13 +46,13 @@ def main():
         opt.out_id += '_jer_down'
 
     if opt.run_samples == 'data':
-        fout_name = 'data_{}.root'.format(opt.out_id)
+        fout_name = f'data_{opt.out_id}.root'
     elif opt.run_samples == 'mc':
-        fout_name = 'mc_{}.root'.format(opt.out_id)
+        fout_name = f'mc_{opt.out_id}.root'
     else:
         sys.exit('ERROR: You must specify what kind of dataset you want to run [--run]')
 
-    print('Reading files from {}'.format(opt.files))    
+    print(f'Reading files from {opt.files}')
     files = []
     with open(os.path.join(opt.files),'r') as fread:
         files = fread.readlines()
@@ -71,7 +71,7 @@ def main():
                     fileset[name] = [f]
 
     for sample in fileset:
-        print('{0}:\nFiles: {1}'.format(sample,fileset[sample]))
+        print(f'{sample}:\nFiles: {fileset[sample]}')
 
     if opt.channel == 'zmm':
         qg_processor = ZmmProcessor(opt.puppi, opt.jes_up, opt.jes_down, opt.jer_up, opt.jer_down)
