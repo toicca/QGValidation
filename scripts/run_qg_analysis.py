@@ -18,7 +18,7 @@ def main():
     parser.add_option('--channel', dest='channel', type='string', default='zmm', help='Specify which channel to run [zmm/dijet]. Default: %default')
     parser.add_option('--files', dest='files', type='string', default='', help='Specify .txt file containing paths to JMENano files.')
     parser.add_option('--run', dest='run_samples', type='string', default='data', help='Specify which samples to run [data/mc/all]. Default: %default')
-    parser.add_option('--out_dir', dest='out_dir', type='string', default='UL17', help='Output subdirectory to which the data is stored. Default: %default')
+    parser.add_option('--out_dir', dest='out_dir', type='string', default='UL18', help='Output subdirectory to which the data is stored. Default: %default')
     parser.add_option('--out_id', dest='out_id', type='string', default='', help='ID for output file.')
     parser.add_option('--puppi', dest='puppi', action='store_true', default=False, help='Option for processing PUPPI jets. Default: %default')
     parser.add_option('--jes_up', dest='jes_up', action='store_true', default=False, help='Option for processing JES up variations. Default: %default')

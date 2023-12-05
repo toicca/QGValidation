@@ -151,11 +151,11 @@ class DijetProcessor(processor.ProcessorABC):
         self.jer_up = jer_up
         self.jer_down = jer_down
 
-        jer_mc_SF = 'Summer19UL17_JRV2_MC_SF_AK4PFchs'
-        jer_mc_PtResolution = 'Summer19UL17_JRV2_MC_PtResolution_AK4PFchs'
-        jec_mc_L1FastJet = 'Summer19UL17_V5_MC_L1FastJet_AK4PFchs'
-        jec_mc_L2Relative = 'Summer19UL17_V5_MC_L2Relative_AK4PFchs'
-        jec_mc_UncSources = 'RegroupedV2_Summer19UL17_V5_MC_UncertaintySources_AK4PFchs'
+        jer_mc_SF = 'Summer19UL18_JRV2_MC_SF_AK4PFchs'
+        jer_mc_PtResolution = 'Summer19UL18_JRV2_MC_PtResolution_AK4PFchs'
+        jec_mc_L1FastJet = 'Summer19UL18_V5_MC_L1FastJet_AK4PFchs'
+        jec_mc_L2Relative = 'Summer19UL18_V5_MC_L2Relative_AK4PFchs'
+        jec_mc_UncSources = 'RegroupedV2_Summer19UL18_V5_MC_UncertaintySources_AK4PFchs'
 
         coffea_base_path = os.environ['COFFEAHOME']
         jerc_extractor = extractor()
@@ -189,12 +189,12 @@ class DijetProcessor(processor.ProcessorABC):
         self.jet_corrector = CorrectedJetsFactory(name_map, jec_stack)
         self.jet_veto_maps = correctionlib.CorrectionSet.from_file(f'{coffea_base_path}/utils/jet_veto_maps/jetvetomaps_UL18.json.gz')['Summer19UL18_V1']
 
-        self.qgl_evaluator = correctionlib.CorrectionSet.from_file(f'{coffea_base_path}/utils/QGL/pdfQG_AK4chs_13TeV_UL17_ghosts.corr.json')
-        self.qgl_file = uproot.open(f'{coffea_base_path}/utils/QGL/pdfQG_AK4chs_13TeV_UL17_ghosts.root')
+        self.qgl_evaluator = correctionlib.CorrectionSet.from_file(f'{coffea_base_path}/utils/QGL/PDF_QGL_JMEnano_UL18_Ak4CHS.corr.json')
+        self.qgl_file = uproot.open(f'{coffea_base_path}/utils/QGL/PDF_QGL_JMEnano_UL18_Ak4CHS.root')
 
-        self.pileup_weights = from_uproot_THx(f'{coffea_base_path}/utils/pileup/PU_weights_HLT_ZeroBias_69200ub_pythia8_UL17.root:weight', flow='clamp')
-        self.pileup_weights_down = from_uproot_THx(f'{coffea_base_path}/utils/pileup/PU_weights_HLT_ZeroBias_66000ub_pythia8_UL17.root:weight', flow='clamp')
-        self.pileup_weights_up = from_uproot_THx(f'{coffea_base_path}/utils/pileup/PU_weights_HLT_ZeroBias_72400ub_pythia8_UL17.root:weight', flow='clamp')
+        self.pileup_weights = from_uproot_THx(f'{coffea_base_path}/utils/pileup/PU_weights_HLT_ZeroBias_69200ub_pythia8_UL18.root:weight', flow='clamp')
+        self.pileup_weights_down = from_uproot_THx(f'{coffea_base_path}/utils/pileup/PU_weights_HLT_ZeroBias_66000ub_pythia8_UL18.root:weight', flow='clamp')
+        self.pileup_weights_up = from_uproot_THx(f'{coffea_base_path}/utils/pileup/PU_weights_HLT_ZeroBias_72400ub_pythia8_UL18.root:weight', flow='clamp')
     
     def process(self, events):
         output = self.output
@@ -426,9 +426,9 @@ class DijetProcessor(processor.ProcessorABC):
                 with open(os.path.join(os.environ['COFFEAHOME'],'utils','utils.json'),'r') as utils_json_file:
                     utils_json = json.load(utils_json_file)
 
-                xsecs = utils_json['UL17']['xsec']
-                nGenEvents = utils_json['UL17']['nGenEvents']
-                lumi = utils_json['UL17']['lumi']
+                xsecs = utils_json['UL18']['xsec']
+                nGenEvents = utils_json['UL18']['nGenEvents']
+                lumi = utils_json['UL18']['lumi']
 
                 sample_name = next((x for x in xsecs.keys() if dataset in x), None)
                 if sample_name is None:
@@ -607,11 +607,11 @@ class ZmmProcessor(processor.ProcessorABC):
         self.jer_up = jer_up
         self.jer_down = jer_down
 
-        jer_mc_SF = 'Summer19UL17_JRV2_MC_SF_AK4PFchs'
-        jer_mc_PtResolution = 'Summer19UL17_JRV2_MC_PtResolution_AK4PFchs'
-        jec_mc_L1FastJet = 'Summer19UL17_V5_MC_L1FastJet_AK4PFchs'
-        jec_mc_L2Relative = 'Summer19UL17_V5_MC_L2Relative_AK4PFchs'
-        jec_mc_UncSources = 'RegroupedV2_Summer19UL17_V5_MC_UncertaintySources_AK4PFchs'
+        jer_mc_SF = 'Summer19UL18_JRV2_MC_SF_AK4PFchs'
+        jer_mc_PtResolution = 'Summer19UL18_JRV2_MC_PtResolution_AK4PFchs'
+        jec_mc_L1FastJet = 'Summer19UL18_V5_MC_L1FastJet_AK4PFchs'
+        jec_mc_L2Relative = 'Summer19UL18_V5_MC_L2Relative_AK4PFchs'
+        jec_mc_UncSources = 'RegroupedV2_Summer19UL18_V5_MC_UncertaintySources_AK4PFchs'
 
         coffea_base_path = os.environ['COFFEAHOME']
         jerc_extractor = extractor()
@@ -645,12 +645,12 @@ class ZmmProcessor(processor.ProcessorABC):
         self.jet_corrector = CorrectedJetsFactory(name_map, jec_stack)
         self.jet_veto_maps = correctionlib.CorrectionSet.from_file(f'{coffea_base_path}/utils/jet_veto_maps/jetvetomaps_UL18.json.gz')['Summer19UL18_V1']
 
-        self.qgl_evaluator = correctionlib.CorrectionSet.from_file(f'{coffea_base_path}/utils/QGL/pdfQG_AK4chs_13TeV_UL17_ghosts.corr.json')
-        self.qgl_file = uproot.open(f'{coffea_base_path}/utils/QGL/pdfQG_AK4chs_13TeV_UL17_ghosts.root')
+        self.qgl_evaluator = correctionlib.CorrectionSet.from_file(f'{coffea_base_path}/utils/QGL/PDF_QGL_JMEnano_UL18_Ak4CHS.corr.json')
+        self.qgl_file = uproot.open(f'{coffea_base_path}/utils/QGL/PDF_QGL_JMEnano_UL18_Ak4CHS.root')
 
-        self.pileup_weights = from_uproot_THx(f'{coffea_base_path}/utils/pileup/PU_weights_HLT_ZeroBias_69200ub_pythia8_UL17.root:weight', flow='clamp')
-        self.pileup_weights_down = from_uproot_THx(f'{coffea_base_path}/utils/pileup/PU_weights_HLT_ZeroBias_66000ub_pythia8_UL17.root:weight', flow='clamp')
-        self.pileup_weights_up = from_uproot_THx(f'{coffea_base_path}/utils/pileup/PU_weights_HLT_ZeroBias_72400ub_pythia8_UL17.root:weight', flow='clamp')
+        self.pileup_weights = from_uproot_THx(f'{coffea_base_path}/utils/pileup/PU_weights_HLT_ZeroBias_69200ub_pythia8_UL18.root:weight', flow='clamp')
+        self.pileup_weights_down = from_uproot_THx(f'{coffea_base_path}/utils/pileup/PU_weights_HLT_ZeroBias_66000ub_pythia8_UL18.root:weight', flow='clamp')
+        self.pileup_weights_up = from_uproot_THx(f'{coffea_base_path}/utils/pileup/PU_weights_HLT_ZeroBias_72400ub_pythia8_UL18.root:weight', flow='clamp')
 
     def process(self, events):
         output = self.output
@@ -886,9 +886,9 @@ class ZmmProcessor(processor.ProcessorABC):
                 with open(os.path.join(os.environ['COFFEAHOME'],'utils','utils.json'),'r') as utils_json_file:
                     utils_json = json.load(utils_json_file)
 
-                xsecs = utils_json['UL17']['xsec']
-                nGenEvents = utils_json['UL17']['nGenEvents']
-                lumi = utils_json['UL17']['lumi']
+                xsecs = utils_json['UL18']['xsec']
+                nGenEvents = utils_json['UL18']['nGenEvents']
+                lumi = utils_json['UL18']['lumi']
 
                 sample_name = next((x for x in xsecs.keys() if dataset in x), None)
                 if sample_name is None:
