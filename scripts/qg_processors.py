@@ -359,6 +359,10 @@ class DijetProcessor(processor.ProcessorABC):
         leading_jet_phi = dijet.jets['phi'][:,0]
         subleading_jet_phi = dijet.jets['phi'][:,1]
 
+        # Necessary transformation for phi so that the edge values don't go out of bounds for the jet veto maps. This doesn't affect the results.
+        leading_jet_phi = (leading_jet_phi + np.pi) % (2 * np.pi) - np.pi
+        subleading_jet_phi = (subleading_jet_phi + np.pi) % (2 * np.pi) - np.pi
+
         leading_jet_veto_map_mask = self.jet_veto_maps.evaluate("jetvetomap", leading_jet_eta, leading_jet_phi) == 0
         subleading_jet_veto_map_mask = self.jet_veto_maps.evaluate("jetvetomap", subleading_jet_eta, subleading_jet_phi) == 0
         jet_veto_map_mask = leading_jet_veto_map_mask & subleading_jet_veto_map_mask # Drop the event if either of the two leading jets is in a jet veto map area
@@ -830,6 +834,9 @@ class ZmmProcessor(processor.ProcessorABC):
         # NB! The jet veto maps are inverted in order to use them as masks, since by default a jet veto map outputs a zero if the jet passes the veto
         leading_jet_eta = z_jets.jets['eta'][:,0]
         leading_jet_phi = z_jets.jets['phi'][:,0]
+
+        # Necessary transformation for phi so that the edge values don't go out of bounds for the jet veto maps. This doesn't affect the results.
+        leading_jet_phi = (leading_jet_phi + np.pi) % (2 * np.pi) - np.pi
 
         jet_veto_map_mask = self.jet_veto_maps.evaluate("jetvetomap", leading_jet_eta, leading_jet_phi) == 0 # Drop the event if the leading jet is in a jet veto map area
 
