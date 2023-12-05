@@ -217,7 +217,7 @@ class DijetProcessor(processor.ProcessorABC):
             run = events['run']
             lumiblock = events['luminosityBlock']
             goldenJSON_path = os.path.join(os.environ['COFFEAHOME'],'data','json')
-            lumi_path = f'{goldenJSON_path}/Cert_294927-306462_13TeV_UL2017_Collisions17_GoldenJSON.txt'
+            lumi_path = f'{goldenJSON_path}/Cert_314472-325175_13TeV_Legacy2018_Collisions18_JSON.txt'
             lumi_mask = LumiMask(lumi_path)(run, lumiblock) 
 
         nEvents = len(events.HLT.ZeroBias)
@@ -675,7 +675,7 @@ class ZmmProcessor(processor.ProcessorABC):
             run = events['run']
             lumiblock = events['luminosityBlock']
             goldenJSON_path = os.path.join(os.environ['COFFEAHOME'],'data','json')
-            lumi_path = f'{goldenJSON_path}/Cert_294927-306462_13TeV_UL2017_Collisions17_GoldenJSON.txt'
+            lumi_path = f'{goldenJSON_path}/Cert_314472-325175_13TeV_Legacy2018_Collisions18_JSON.txt'
             lumi_mask = LumiMask(lumi_path)(run,lumiblock)
 
         nEvents = len(events.HLT.Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ_Mass8)
