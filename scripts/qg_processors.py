@@ -265,7 +265,7 @@ class DijetProcessor(processor.ProcessorABC):
         # OBJECT SELECTIONS #
         # # # # # # # # # # #
 
-        jets, _ = utils.ObjSelection(jets,'jet',2017)
+        jets, _ = utils.ObjSelection(jets,'jet','2017')
         output['cutflow']['cleaned jets'] += ak.num(jets).to_numpy().sum()
 
         # # # # # # # # # #
@@ -726,9 +726,9 @@ class ZmmProcessor(processor.ProcessorABC):
         # OBJECT SELECTIONS #
         # # # # # # # # # # #
         
-        muons, muon_selection = utils.ObjSelection(muons,'muon',2017)
-        electrons, _ = utils.ObjSelection(electrons,'electron',2017)
-        jets, _ = utils.ObjSelection(jets,'jet',2017)
+        muons, muon_selection = utils.ObjSelection(muons,'muon','2017')
+        electrons, _ = utils.ObjSelection(electrons,'electron','2017')
+        jets, _ = utils.ObjSelection(jets,'jet','2017')
 
         # Now we want to make sure no jets are within 0.4 delta-R of any muon.
         cross_jmu = ak.cartesian([jets, muons], nested=True)

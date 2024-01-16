@@ -14,8 +14,11 @@ def ObjSelection(obj,name,year=2016,selection=None):
     selection: bool mask for selection different than the standard
     Returns: obj array with selection applied '''
 
-    if year not in [2016, 2017, 2018]:
-        sys.exit('ERROR: Only 2016--2018 supported')
+    if year not in ['2016_preVFP', '2016_postVFP', '2017', '2018']:
+        sys.exit('ERROR: Only 2016_preVFP, 2016_postVFP, 2017, 2018 supported for object selection!')
+
+    if 'VFP' in year:
+        year = '2016'
 
     obj_list = ['jet','muon','electron']
     
@@ -25,7 +28,7 @@ def ObjSelection(obj,name,year=2016,selection=None):
     if selection != None:
         return obj[selection]
     else:
-        if year == 2016:
+        if year == '2016':
             if name == 'jet':
                 selection = (
                     (np.abs(obj['eta']) < 4.7) &
@@ -53,7 +56,7 @@ def ObjSelection(obj,name,year=2016,selection=None):
                     (obj['cutBased'] >= 1) &
                     (obj['mass'] > -1)        
                 )
-        elif year == 2017:
+        elif year == '2017':
             if name == 'jet':
                 selection = (
                     (np.abs(obj['eta']) < 4.7) &
@@ -80,7 +83,7 @@ def ObjSelection(obj,name,year=2016,selection=None):
                     (obj['mass'] > -1)        
                 )
 
-        elif year == 2018:
+        elif year == '2018':
             if name == 'jet':
                 selection = (
                     (np.abs(obj['eta']) < 4.7) &
