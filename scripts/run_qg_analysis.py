@@ -18,9 +18,14 @@ def main():
     parser.add_option('--channel', dest='channel', type='string', default='zmm', help='Specify which channel to run [zmm/dijet]. Default: %default')
     parser.add_option('--files', dest='files', type='string', default='', help='Specify .txt file containing paths to JMENano files.')
     parser.add_option('--run', dest='run_samples', type='string', default='data', help='Specify which samples to run [data/mc/all]. Default: %default')
-    parser.add_option('--out_dir', dest='out_dir', type='string', default='UL18', help='Output subdirectory to which the data is stored. Default: %default')
+
+    
+    parser.add_option('--campaign', dest='campaign', type='string', default='UL17', help='Specify the campaign [UL16_preVFP, UL16_postVFP, UL17, UL18]. Default: %default')
+    parser.add_option('--out_dir', dest='out_dir', type='string', default='UL17', help='Output subdirectory to which the data is stored. Default: %default')
+
     parser.add_option('--out_id', dest='out_id', type='string', default='', help='ID for output file.')
     parser.add_option('--puppi', dest='puppi', action='store_true', default=False, help='Option for processing PUPPI jets. Default: %default')
+    parser.add_option('--jetvetomaps', dest='jetvetomaps', action='store_true', default=False, help='Option to apply jet veto maps. Default: %default')
     parser.add_option('--jes_up', dest='jes_up', action='store_true', default=False, help='Option for processing JES up variations. Default: %default')
     parser.add_option('--jes_down', dest='jes_down', action='store_true', default=False, help='Option for processing JES down variations. Default: %default')
     parser.add_option('--jer_up', dest='jer_up', action='store_true', default=False, help='Option for processing JES up variations. Default: %default')
@@ -31,6 +36,9 @@ def main():
         os.environ['COFFEAHOME']
     except:
         sys.exit('ERROR: Enviroment variables not set. Run activate_setup.sh first!')
+
+    if opt.campaign not in ['UL16_preVFP', 'UL16_postVFP', 'UL17', 'UL18']:
+        sys.exit(f'ERROR: campaign {opt.campaign} not supported. Please choose from: UL16_preVFP, UL16_postVFP, UL17, UL18')
 
     if opt.jes_up and opt.jes_down:
         sys.exit('ERROR: Cannot do JES up and down variations simultaneously!')
@@ -74,9 +82,25 @@ def main():
         print(f'{sample}:\nFiles: {fileset[sample]}')
 
     if opt.channel == 'zmm':
-        qg_processor = ZmmProcessor(opt.puppi, opt.jes_up, opt.jes_down, opt.jer_up, opt.jer_down)
+        qg_processor = ZmmProcessor(
+                campaign = opt.campaign,
+                use_jet_veto_maps = opt.jetvetomaps,
+                puppi = opt.puppi,
+                jes_up = opt.jes_up,
+                jes_down = opt.jes_down,
+                jer_up = opt.jer_up,
+                jer_down = opt.jer_down
+                )
     elif opt.channel == 'dijet':
-        qg_processor = DijetProcessor(opt.puppi, opt.jes_up, opt.jes_down, opt.jer_up, opt.jer_down)
+        qg_processor = DijetProcessor(
+                campaign = opt.campaign,
+                use_jet_veto_maps = opt.jetvetomaps,
+                puppi = opt.puppi,
+                jes_up = opt.jes_up,
+                jes_down = opt.jes_down,
+                jer_up = opt.jer_up,
+                jer_down = opt.jer_down
+                )
     else:
         sys.exit('ERROR: Invalid channel!')
 

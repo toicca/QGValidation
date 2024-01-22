@@ -80,7 +80,7 @@ class Channel():
             self.muons = self.muons[self.sel]
         
 class DijetProcessor(processor.ProcessorABC):
-    def __init__(self, puppi, jes_up, jes_down, jer_up, jer_down):        
+    def __init__(self, campaign, use_jet_veto_maps, puppi, jes_up, jes_down, jer_up, jer_down):        
         self.output = {
             'cutflow' : processor.defaultdict_accumulator(int), 
             'weight': processor.column_accumulator(np.array([])),
@@ -120,7 +120,7 @@ class DijetProcessor(processor.ProcessorABC):
             'Jet2_pt': processor.column_accumulator(np.array([])),
             'Jet2_eta': processor.column_accumulator(np.array([])),
             'Jet2_phi': processor.column_accumulator(np.array([])),
-            'Jet2_mass': processor.column_accumulator(np.array([])),
+            'Jet2_mass': processor.column_accumulator(np.arrayUpstream([])),
             'Jet2_qgl': processor.column_accumulator(np.array([])),
             'Jet2_qgl_axis2': processor.column_accumulator(np.array([])),
             'Jet2_qgl_ptD': processor.column_accumulator(np.array([])),
@@ -145,56 +145,26 @@ class DijetProcessor(processor.ProcessorABC):
             'Pileup_nTrueInt': processor.column_accumulator(np.array([])),
             }
 
+        self.campaign = campaign
         self.puppi = puppi
         self.jes_up = jes_up
         self.jes_down = jes_down
         self.jer_up = jer_up
         self.jer_down = jer_down
 
-        jer_mc_SF = 'Summer19UL18_JRV2_MC_SF_AK4PFchs'
-        jer_mc_PtResolution = 'Summer19UL18_JRV2_MC_PtResolution_AK4PFchs'
-        jec_mc_L1FastJet = 'Summer19UL18_V5_MC_L1FastJet_AK4PFchs'
-        jec_mc_L2Relative = 'Summer19UL18_V5_MC_L2Relative_AK4PFchs'
-        jec_mc_UncSources = 'RegroupedV2_Summer19UL18_V5_MC_UncertaintySources_AK4PFchs'
+        self.jet_corrector = utils.jerc_objects(campaign)
+        self.qgl_evaluator, self.qgl_rho_bin_dict, self.qgl_eta_bin_dict, self.qgl_pt_bin_dict = utils.qgl_pdf_and_binning(campaign)
 
-        coffea_base_path = os.environ['COFFEAHOME']
-        jerc_extractor = extractor()
-        jerc_extractor.add_weight_sets([
-            f'* * {coffea_base_path}/utils/JERC/{jer_mc_SF}.txt',
-            f'* * {coffea_base_path}/utils/JERC/{jer_mc_PtResolution}.txt',
-            f'* * {coffea_base_path}/utils/JERC/{jec_mc_L1FastJet}.txt',
-            f'* * {coffea_base_path}/utils/JERC/{jec_mc_L2Relative}.txt',
-            f'* * {coffea_base_path}/utils/JERC/{jec_mc_UncSources}.junc.txt',
-            ])
-        jerc_extractor.finalize()
-        jerc_evaluator = jerc_extractor.make_evaluator()
+        if use_jet_veto_maps:
+            self.jet_veto_maps = utils.jet_veto_maps(campaign)
+        else:
+            self.jet_veto_maps = None
 
-        self.JER_SF = JetResolutionScaleFactor(**{jer_mc_SF : jerc_evaluator[jer_mc_SF]})
-        self.JER_PtResolution = JetResolution(**{jer_mc_PtResolution : jerc_evaluator[jer_mc_PtResolution]})
+        pileup_weights, pileup_weights_up, pileup_weights_down = utils.pileup_weights(campaign, 'zmm')
+        self.pileup_weight_evaluator = pileup_weights.to_evaluator()
+        self.pileup_weight_up_evaluator = pileup_weights_up.to_evaluator()
+        self.pileup_weight_down_evaluator = pileup_weights_down.to_evaluator()
 
-        jec_stack_names = [key for key in jerc_evaluator.keys()]
-        jec_inputs = {name: jerc_evaluator[name] for name in jec_stack_names}
-        jec_stack = JECStack(jec_inputs)
-
-        name_map = jec_stack.blank_name_map
-        name_map["JetPt"] = "pt"
-        name_map["JetMass"] = "mass"
-        name_map["JetEta"] = "eta"
-        name_map["JetA"] = "area"
-        name_map["ptGenJet"] = "pt_gen"
-        name_map["ptRaw"] = "pt_raw"
-        name_map["massRaw"] = "mass_raw"
-        name_map["Rho"] = "rho"
-
-        self.jet_corrector = CorrectedJetsFactory(name_map, jec_stack)
-        self.jet_veto_maps = correctionlib.CorrectionSet.from_file(f'{coffea_base_path}/utils/jet_veto_maps/jetvetomaps_UL18.json.gz')['Summer19UL18_V1']
-
-        self.qgl_evaluator = correctionlib.CorrectionSet.from_file(f'{coffea_base_path}/utils/QGL/PDF_QGL_JMEnano_UL18_Ak4CHS.corr.json')
-        self.qgl_file = uproot.open(f'{coffea_base_path}/utils/QGL/PDF_QGL_JMEnano_UL18_Ak4CHS.root')
-
-        self.pileup_weights = from_uproot_THx(f'{coffea_base_path}/utils/pileup/PU_weights_HLT_ZeroBias_69200ub_pythia8_UL18.root:weight', flow='clamp')
-        self.pileup_weights_down = from_uproot_THx(f'{coffea_base_path}/utils/pileup/PU_weights_HLT_ZeroBias_66000ub_pythia8_UL18.root:weight', flow='clamp')
-        self.pileup_weights_up = from_uproot_THx(f'{coffea_base_path}/utils/pileup/PU_weights_HLT_ZeroBias_72400ub_pythia8_UL18.root:weight', flow='clamp')
     
     def process(self, events):
         output = self.output
@@ -216,9 +186,9 @@ class DijetProcessor(processor.ProcessorABC):
         else:
             run = events['run']
             lumiblock = events['luminosityBlock']
-            goldenJSON_path = os.path.join(os.environ['COFFEAHOME'],'data','json')
-            lumi_path = f'{goldenJSON_path}/Cert_314472-325175_13TeV_Legacy2018_Collisions18_JSON.txt'
-            lumi_mask = LumiMask(lumi_path)(run, lumiblock) 
+            lumi_json_file = utils.lumi_json(self.campaign)
+            lumi_mask = LumiMask(lumi_json_file)(run, lumiblock) 
+
 
         nEvents = len(events.HLT.ZeroBias)
         event_rho = events.fixedGridRhoFastjetAll
@@ -265,7 +235,7 @@ class DijetProcessor(processor.ProcessorABC):
         # OBJECT SELECTIONS #
         # # # # # # # # # # #
 
-        jets, _ = utils.ObjSelection(jets,'jet',2017)
+        jets = utils.object_selection(jets, 'jet', self.campaign)
         output['cutflow']['cleaned jets'] += ak.num(jets).to_numpy().sum()
 
         # # # # # # # # # #
@@ -352,20 +322,25 @@ class DijetProcessor(processor.ProcessorABC):
         subleading_jet_pt = dijet.jets['pt'][:,1]
         pt_balance_mask = (leading_jet_pt-subleading_jet_pt)/(leading_jet_pt+subleading_jet_pt) < 0.7
 
-        # Apply jet veto maps
-        # NB! The jet veto maps are inverted in order to use them as masks, since by default a jet veto map outputs a zero if the jet passes the veto
-        leading_jet_eta = dijet.jets['eta'][:,0]
-        subleading_jet_eta = dijet.jets['eta'][:,1]
-        leading_jet_phi = dijet.jets['phi'][:,0]
-        subleading_jet_phi = dijet.jets['phi'][:,1]
+        if self.jet_veto_maps:
+            # NB! The jet veto maps are inverted in order to use them as masks,
+            # since by default a jet veto map outputs a zero if the jet passes the veto
+            leading_jet_eta = dijet.jets['eta'][:,0]
+            subleading_jet_eta = dijet.jets['eta'][:,1]
+            leading_jet_phi = dijet.jets['phi'][:,0]
+            subleading_jet_phi = dijet.jets['phi'][:,1]
 
-        # Necessary transformation for phi so that the edge values don't go out of bounds for the jet veto maps. This doesn't affect the results.
-        leading_jet_phi = (leading_jet_phi + np.pi) % (2 * np.pi) - np.pi
-        subleading_jet_phi = (subleading_jet_phi + np.pi) % (2 * np.pi) - np.pi
+            # Necessary transformation for phi so that the edge values don't go out of bounds for the jet veto maps.
+            # This doesn't affect the results.
+            leading_jet_phi = (leading_jet_phi + np.pi) % (2 * np.pi) - np.pi
+            subleading_jet_phi = (subleading_jet_phi + np.pi) % (2 * np.pi) - np.pi
 
-        leading_jet_veto_map_mask = self.jet_veto_maps.evaluate("jetvetomap", leading_jet_eta, leading_jet_phi) == 0
-        subleading_jet_veto_map_mask = self.jet_veto_maps.evaluate("jetvetomap", subleading_jet_eta, subleading_jet_phi) == 0
-        jet_veto_map_mask = leading_jet_veto_map_mask & subleading_jet_veto_map_mask # Drop the event if either of the two leading jets is in a jet veto map area
+            # Drop the event if either of the two leading jets is in a jet veto map area
+            leading_jet_veto_map_mask = self.jet_veto_maps.evaluate("jetvetomap", leading_jet_eta, leading_jet_phi) == 0
+            subleading_jet_veto_map_mask = self.jet_veto_maps.evaluate("jetvetomap", subleading_jet_eta, subleading_jet_phi) == 0
+            jet_veto_map_mask = leading_jet_veto_map_mask & subleading_jet_veto_map_mask 
+        else:
+            jet_veto_map_mask = np.ones(len(dijet.jets), dtype=np.bool_)
 
         # Apply dijet selection
         dijet_mask = deltaphi_mask & subsubleading_mask & pt_balance_mask & genjet_match_mask & jet_veto_map_mask
@@ -385,29 +360,12 @@ class DijetProcessor(processor.ProcessorABC):
         PSWeight = PSWeight[dijet_mask]
 
         # Calculate the QGL value for each jet
-        qgl_file = self.qgl_file
-        qgl_rho_bins = qgl_file['rhoBins'].members['fElements']
-        qgl_eta_bins = qgl_file['etaBins'].members['fElements']
-        qgl_pt_bins = qgl_file['ptBins'].members['fElements']
-
-        qgl_rho_dict = {}
-        qgl_eta_dict = {}
-        qgl_pt_dict = {}
-
-        for i in range(len(qgl_rho_bins)):
-            qgl_rho_dict[i] = qgl_rho_bins[i]
-        for i in range(len(qgl_eta_bins)):
-            qgl_eta_dict[i] = qgl_eta_bins[i]
-        for i in range(len(qgl_pt_bins)):
-            qgl_pt_dict[i] = qgl_pt_bins[i]
-
-        find_rho_bin = lambda x : find_qgl_bin(qgl_rho_dict, x)
-        find_eta_bin = lambda x : find_qgl_bin(qgl_eta_dict, x)
-        find_pt_bin = lambda x : find_qgl_bin(qgl_pt_dict, x)
+        find_rho_bin = lambda x : find_qgl_bin(self.qgl_rho_bin_dict, x)
+        find_eta_bin = lambda x : find_qgl_bin(self.qgl_eta_bin_dict, x)
+        find_pt_bin = lambda x : find_qgl_bin(self.qgl_pt_bin_dict, x)
 
         # Only pick the variables relevant for computing QGL
         qgl_variables = ['pt', 'eta', 'rho', 'qgl_axis2', 'qgl_mult', 'qgl_ptD']
-        qgl_evaluator = self.qgl_evaluator
 
         leading_jets = ak.zip({var: dijet.jets[:,0][var] for var in qgl_variables})
         subleading_jets = ak.zip({var: dijet.jets[:,1][var] for var in qgl_variables})
@@ -420,8 +378,8 @@ class DijetProcessor(processor.ProcessorABC):
         subleading_jets['eta_bin'] = np.fromiter(map(find_eta_bin, np.abs(subleading_jets['eta'])), dtype=int)
         subleading_jets['pt_bin'] = np.fromiter(map(find_pt_bin, subleading_jets['pt']), dtype=int)
 
-        jet1_qgl = np.fromiter(map(lambda jet: compute_jet_qgl(jet, qgl_evaluator), leading_jets), dtype=float)
-        jet2_qgl = np.fromiter(map(lambda jet: compute_jet_qgl(jet, qgl_evaluator), subleading_jets), dtype=float)
+        jet1_qgl = np.fromiter(map(lambda jet: compute_jet_qgl(jet, self.qgl_evaluator), leading_jets), dtype=float)
+        jet2_qgl = np.fromiter(map(lambda jet: compute_jet_qgl(jet, self.qgl_evaluator), subleading_jets), dtype=float)
 
         # Add weights and save output
         n_dijet = len(dijet.jets)
@@ -430,9 +388,10 @@ class DijetProcessor(processor.ProcessorABC):
                 with open(os.path.join(os.environ['COFFEAHOME'],'utils','utils.json'),'r') as utils_json_file:
                     utils_json = json.load(utils_json_file)
 
-                xsecs = utils_json['UL18']['xsec']
-                nGenEvents = utils_json['UL18']['nGenEvents']
-                lumi = utils_json['UL18']['lumi']
+                xsecs = utils_json[self.campaign]['xsec']
+                nGenEvents = utils_json[self.campaign]['nGenEvents']
+                lumi = utils_json[self.campaign]['lumi']
+
 
                 sample_name = next((x for x in xsecs.keys() if dataset in x), None)
                 if sample_name is None:
@@ -447,12 +406,9 @@ class DijetProcessor(processor.ProcessorABC):
                 weights = events['genWeight'][event_mask]
                 weights = weights[dijet_mask].to_numpy()*mc_scale
 
-                pileup_weight_evaluator = self.pileup_weights.to_evaluator()
-                pileup_weight_up_evaluator = self.pileup_weights_up.to_evaluator()
-                pileup_weight_down_evaluator = self.pileup_weights_down.to_evaluator()
-                PU_weight = pileup_weight_evaluator.evaluate(Pileup_nTrueInt)
-                PU_weight_up = pileup_weight_up_evaluator.evaluate(Pileup_nTrueInt)
-                PU_weight_down = pileup_weight_down_evaluator.evaluate(Pileup_nTrueInt)
+                PU_weight = self.pileup_weight_evaluator.evaluate(Pileup_nTrueInt)
+                PU_weight_up = self.pileup_weight_up_evaluator.evaluate(Pileup_nTrueInt)
+                PU_weight_down = self.pileup_weight_down_evaluator.evaluate(Pileup_nTrueInt)
 
                 nPSWeight = [len(x) for x in events.PSWeight]
                 if len(np.unique(nPSWeight))==1 and np.unique(nPSWeight[0])==44:
@@ -560,7 +516,7 @@ class DijetProcessor(processor.ProcessorABC):
 
 # Processor for z+jets analysis
 class ZmmProcessor(processor.ProcessorABC):
-    def __init__(self, puppi, jes_up, jes_down, jer_up, jer_down):        
+    def __init__(self, campaign, use_jet_veto_maps, puppi, jes_up, jes_down, jer_up, jer_down):        
         self.output = {
             'cutflow' : processor.defaultdict_accumulator(int), 
             'weight': processor.column_accumulator(np.array([])),
@@ -605,56 +561,26 @@ class ZmmProcessor(processor.ProcessorABC):
             'Pileup_nTrueInt': processor.column_accumulator(np.array([])),
             }
 
+        self.campaign = campaign
         self.puppi = puppi
         self.jes_up = jes_up
         self.jes_down = jes_down
         self.jer_up = jer_up
         self.jer_down = jer_down
 
-        jer_mc_SF = 'Summer19UL18_JRV2_MC_SF_AK4PFchs'
-        jer_mc_PtResolution = 'Summer19UL18_JRV2_MC_PtResolution_AK4PFchs'
-        jec_mc_L1FastJet = 'Summer19UL18_V5_MC_L1FastJet_AK4PFchs'
-        jec_mc_L2Relative = 'Summer19UL18_V5_MC_L2Relative_AK4PFchs'
-        jec_mc_UncSources = 'RegroupedV2_Summer19UL18_V5_MC_UncertaintySources_AK4PFchs'
+        self.jet_corrector = utils.jerc_objects(campaign)
+        self.qgl_evaluator, self.qgl_rho_bin_dict, self.qgl_eta_bin_dict, self.qgl_pt_bin_dict = utils.qgl_pdf_and_binning(campaign)
 
-        coffea_base_path = os.environ['COFFEAHOME']
-        jerc_extractor = extractor()
-        jerc_extractor.add_weight_sets([
-            f'* * {coffea_base_path}/utils/JERC/{jer_mc_SF}.txt',
-            f'* * {coffea_base_path}/utils/JERC/{jer_mc_PtResolution}.txt',
-            f'* * {coffea_base_path}/utils/JERC/{jec_mc_L1FastJet}.txt',
-            f'* * {coffea_base_path}/utils/JERC/{jec_mc_L2Relative}.txt',
-            f'* * {coffea_base_path}/utils/JERC/{jec_mc_UncSources}.junc.txt',
-            ])
-        jerc_extractor.finalize()
-        jerc_evaluator = jerc_extractor.make_evaluator()
+        if use_jet_veto_maps:
+            self.jet_veto_maps = utils.jet_veto_maps(campaign)
+        else:
+            self.jet_veto_maps = None
 
-        self.JER_SF = JetResolutionScaleFactor(**{jer_mc_SF : jerc_evaluator[jer_mc_SF]})
-        self.JER_PtResolution = JetResolution(**{jer_mc_PtResolution : jerc_evaluator[jer_mc_PtResolution]})
+        pileup_weights, pileup_weights_up, pileup_weights_down = utils.pileup_weights(campaign, 'zmm')
+        self.pileup_weight_evaluator = pileup_weights.to_evaluator()
+        self.pileup_weight_up_evaluator = pileup_weights_up.to_evaluator()
+        self.pileup_weight_down_evaluator = pileup_weights_down.to_evaluator()
 
-        jec_stack_names = [key for key in jerc_evaluator.keys()]
-        jec_inputs = {name: jerc_evaluator[name] for name in jec_stack_names}
-        jec_stack = JECStack(jec_inputs)
-
-        name_map = jec_stack.blank_name_map
-        name_map["JetPt"] = "pt"
-        name_map["JetMass"] = "mass"
-        name_map["JetEta"] = "eta"
-        name_map["JetA"] = "area"
-        name_map["ptGenJet"] = "pt_gen"
-        name_map["ptRaw"] = "pt_raw"
-        name_map["massRaw"] = "mass_raw"
-        name_map["Rho"] = "rho"
-
-        self.jet_corrector = CorrectedJetsFactory(name_map, jec_stack)
-        self.jet_veto_maps = correctionlib.CorrectionSet.from_file(f'{coffea_base_path}/utils/jet_veto_maps/jetvetomaps_UL18.json.gz')['Summer19UL18_V1']
-
-        self.qgl_evaluator = correctionlib.CorrectionSet.from_file(f'{coffea_base_path}/utils/QGL/PDF_QGL_JMEnano_UL18_Ak4CHS.corr.json')
-        self.qgl_file = uproot.open(f'{coffea_base_path}/utils/QGL/PDF_QGL_JMEnano_UL18_Ak4CHS.root')
-
-        self.pileup_weights = from_uproot_THx(f'{coffea_base_path}/utils/pileup/PU_weights_HLT_ZeroBias_69200ub_pythia8_UL18.root:weight', flow='clamp')
-        self.pileup_weights_down = from_uproot_THx(f'{coffea_base_path}/utils/pileup/PU_weights_HLT_ZeroBias_66000ub_pythia8_UL18.root:weight', flow='clamp')
-        self.pileup_weights_up = from_uproot_THx(f'{coffea_base_path}/utils/pileup/PU_weights_HLT_ZeroBias_72400ub_pythia8_UL18.root:weight', flow='clamp')
 
     def process(self, events):
         output = self.output
@@ -678,9 +604,9 @@ class ZmmProcessor(processor.ProcessorABC):
         else:
             run = events['run']
             lumiblock = events['luminosityBlock']
-            goldenJSON_path = os.path.join(os.environ['COFFEAHOME'],'data','json')
-            lumi_path = f'{goldenJSON_path}/Cert_314472-325175_13TeV_Legacy2018_Collisions18_JSON.txt'
-            lumi_mask = LumiMask(lumi_path)(run,lumiblock)
+            lumi_json_file = utils.lumi_json(self.campaign)
+            lumi_mask = LumiMask(lumi_json_file)(run, lumiblock) 
+
 
         nEvents = len(events.HLT.Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ_Mass8)
         event_rho = events.fixedGridRhoFastjetAll
@@ -726,9 +652,9 @@ class ZmmProcessor(processor.ProcessorABC):
         # OBJECT SELECTIONS #
         # # # # # # # # # # #
         
-        muons, muon_selection = utils.ObjSelection(muons,'muon',2017)
-        electrons, _ = utils.ObjSelection(electrons,'electron',2017)
-        jets, _ = utils.ObjSelection(jets,'jet',2017)
+        muons = utils.object_selection(muons, 'muon', self.campaign)
+        electrons = utils.object_selection(electrons, 'electron', self.campaign)
+        jets = utils.object_selection(jets, 'jet', self.campaign)
 
         # Now we want to make sure no jets are within 0.4 delta-R of any muon.
         cross_jmu = ak.cartesian([jets, muons], nested=True)
@@ -830,15 +756,20 @@ class ZmmProcessor(processor.ProcessorABC):
         else:
             genjet_match_mask = np.ones(len(z_jets.jets), dtype=np.bool_)
 
-        # Apply jet veto maps
-        # NB! The jet veto maps are inverted in order to use them as masks, since by default a jet veto map outputs a zero if the jet passes the veto
-        leading_jet_eta = z_jets.jets['eta'][:,0]
-        leading_jet_phi = z_jets.jets['phi'][:,0]
+        if self.jet_veto_maps:
+            # NB! The jet veto maps are inverted in order to use them as masks,
+            # since by default a jet veto map outputs a zero if the jet passes the veto
+            leading_jet_eta = z_jets.jets['eta'][:,0]
+            leading_jet_phi = z_jets.jets['phi'][:,0]
 
-        # Necessary transformation for phi so that the edge values don't go out of bounds for the jet veto maps. This doesn't affect the results.
-        leading_jet_phi = (leading_jet_phi + np.pi) % (2 * np.pi) - np.pi
+            # Necessary transformation for phi so that the edge values don't go out of bounds for the jet veto maps.
+            # This doesn't affect the results.
+            leading_jet_phi = (leading_jet_phi + np.pi) % (2 * np.pi) - np.pi
 
-        jet_veto_map_mask = self.jet_veto_maps.evaluate("jetvetomap", leading_jet_eta, leading_jet_phi) == 0 # Drop the event if the leading jet is in a jet veto map area
+            # Drop the event if the leading jet is in a jet veto map area
+            jet_veto_map_mask = self.jet_veto_maps.evaluate("jetvetomap", leading_jet_eta, leading_jet_phi) == 0
+        else:
+            jet_veto_map_mask = np.ones(len(z_jets.jets), dtype=np.bool_)
 
         # Apply Z+Jets selection
         dilepton_mask = ak.flatten(mass_mask) & charge_mask & deltaphi_mask & subleading_mask & ak.flatten(z_pt_mask) & genjet_match_mask & jet_veto_map_mask
@@ -855,37 +786,19 @@ class ZmmProcessor(processor.ProcessorABC):
         PSWeight = PSWeight[dilepton_mask]
 
         # Calculate the QGL value for each leading jet
-        qgl_file = self.qgl_file
-        qgl_rho_bins = qgl_file['rhoBins'].members['fElements']
-        qgl_eta_bins = qgl_file['etaBins'].members['fElements']
-        qgl_pt_bins = qgl_file['ptBins'].members['fElements']
-
-        qgl_rho_dict = {}
-        qgl_eta_dict = {}
-        qgl_pt_dict = {}
-
-        for i in range(len(qgl_rho_bins)):
-            qgl_rho_dict[i] = qgl_rho_bins[i]
-        for i in range(len(qgl_eta_bins)):
-            qgl_eta_dict[i] = qgl_eta_bins[i]
-        for i in range(len(qgl_pt_bins)):
-            qgl_pt_dict[i] = qgl_pt_bins[i]
-
-        find_rho_bin = lambda x : find_qgl_bin(qgl_rho_dict, x)
-        find_eta_bin = lambda x : find_qgl_bin(qgl_eta_dict, x)
-        find_pt_bin = lambda x : find_qgl_bin(qgl_pt_dict, x)
+        find_rho_bin = lambda x : find_qgl_bin(self.qgl_rho_bin_dict, x)
+        find_eta_bin = lambda x : find_qgl_bin(self.qgl_eta_bin_dict, x)
+        find_pt_bin = lambda x : find_qgl_bin(self.qgl_pt_bin_dict, x)
 
         # Only pick the variables relevant for computing QGL
         qgl_variables = ['pt', 'eta', 'rho', 'qgl_axis2', 'qgl_mult', 'qgl_ptD']
-        qgl_evaluator = self.qgl_evaluator
 
         leading_jets = ak.zip({var: z_jets.jets[:,0][var] for var in qgl_variables})
-
         leading_jets['rho_bin'] = np.fromiter(map(find_rho_bin, leading_jets['rho']), dtype=int)
         leading_jets['eta_bin'] = np.fromiter(map(find_eta_bin, np.abs(leading_jets['eta'])), dtype=int)
         leading_jets['pt_bin'] = np.fromiter(map(find_pt_bin, leading_jets['pt']), dtype=int)
 
-        z_jets.jets['qgl'] = np.fromiter(map(lambda jet: compute_jet_qgl(jet, qgl_evaluator), leading_jets), dtype=float)
+        z_jets.jets['qgl'] = np.fromiter(map(lambda jet: compute_jet_qgl(jet, self.qgl_evaluator), leading_jets), dtype=float)
 
         n_z_jets = len(z_jets.jets)
         if n_z_jets > 0:
@@ -893,9 +806,9 @@ class ZmmProcessor(processor.ProcessorABC):
                 with open(os.path.join(os.environ['COFFEAHOME'],'utils','utils.json'),'r') as utils_json_file:
                     utils_json = json.load(utils_json_file)
 
-                xsecs = utils_json['UL18']['xsec']
-                nGenEvents = utils_json['UL18']['nGenEvents']
-                lumi = utils_json['UL18']['lumi']
+                xsecs = utils_json[self.campaign]['xsec']
+                nGenEvents = utils_json[self.campaign]['nGenEvents']
+                lumi = utils_json[self.campaign]['lumi']
 
                 sample_name = next((x for x in xsecs.keys() if dataset in x), None)
                 if sample_name is None:
@@ -910,12 +823,9 @@ class ZmmProcessor(processor.ProcessorABC):
                 weights = events['genWeight'][event_mask]
                 weights = weights[dilepton_mask].to_numpy()*mc_scale
 
-                pileup_weight_evaluator = self.pileup_weights.to_evaluator()
-                pileup_weight_up_evaluator = self.pileup_weights_up.to_evaluator()
-                pileup_weight_down_evaluator = self.pileup_weights_down.to_evaluator()
-                PU_weight = pileup_weight_evaluator.evaluate(Pileup_nTrueInt)
-                PU_weight_up = pileup_weight_up_evaluator.evaluate(Pileup_nTrueInt)
-                PU_weight_down = pileup_weight_down_evaluator.evaluate(Pileup_nTrueInt)
+                PU_weight = self.pileup_weight_evaluator.evaluate(Pileup_nTrueInt)
+                PU_weight_up = self.pileup_weight_up_evaluator.evaluate(Pileup_nTrueInt)
+                PU_weight_down = self.pileup_weight_down_evaluator.evaluate(Pileup_nTrueInt)
 
                 nPSWeight = [len(x) for x in events.PSWeight]
                 if len(np.unique(nPSWeight))==1 and np.unique(nPSWeight[0])==44:
