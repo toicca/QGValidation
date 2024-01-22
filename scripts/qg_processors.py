@@ -120,7 +120,7 @@ class DijetProcessor(processor.ProcessorABC):
             'Jet2_pt': processor.column_accumulator(np.array([])),
             'Jet2_eta': processor.column_accumulator(np.array([])),
             'Jet2_phi': processor.column_accumulator(np.array([])),
-            'Jet2_mass': processor.column_accumulator(np.array([])),
+            'Jet2_mass': processor.column_accumulator(np.arrayUpstream([])),
             'Jet2_qgl': processor.column_accumulator(np.array([])),
             'Jet2_qgl_axis2': processor.column_accumulator(np.array([])),
             'Jet2_qgl_ptD': processor.column_accumulator(np.array([])),
@@ -164,6 +164,7 @@ class DijetProcessor(processor.ProcessorABC):
         self.pileup_weight_evaluator = pileup_weights.to_evaluator()
         self.pileup_weight_up_evaluator = pileup_weights_up.to_evaluator()
         self.pileup_weight_down_evaluator = pileup_weights_down.to_evaluator()
+
     
     def process(self, events):
         output = self.output
@@ -187,6 +188,7 @@ class DijetProcessor(processor.ProcessorABC):
             lumiblock = events['luminosityBlock']
             lumi_json_file = utils.lumi_json(self.campaign)
             lumi_mask = LumiMask(lumi_json_file)(run, lumiblock) 
+
 
         nEvents = len(events.HLT.ZeroBias)
         event_rho = events.fixedGridRhoFastjetAll
@@ -390,6 +392,7 @@ class DijetProcessor(processor.ProcessorABC):
                 nGenEvents = utils_json[self.campaign]['nGenEvents']
                 lumi = utils_json[self.campaign]['lumi']
 
+
                 sample_name = next((x for x in xsecs.keys() if dataset in x), None)
                 if sample_name is None:
                     sys.exit('ERROR: xsec for sample not found in the JSON file.')
@@ -578,6 +581,7 @@ class ZmmProcessor(processor.ProcessorABC):
         self.pileup_weight_up_evaluator = pileup_weights_up.to_evaluator()
         self.pileup_weight_down_evaluator = pileup_weights_down.to_evaluator()
 
+
     def process(self, events):
         output = self.output
         dataset = events.metadata['dataset']
@@ -602,6 +606,7 @@ class ZmmProcessor(processor.ProcessorABC):
             lumiblock = events['luminosityBlock']
             lumi_json_file = utils.lumi_json(self.campaign)
             lumi_mask = LumiMask(lumi_json_file)(run, lumiblock) 
+
 
         nEvents = len(events.HLT.Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ_Mass8)
         event_rho = events.fixedGridRhoFastjetAll
