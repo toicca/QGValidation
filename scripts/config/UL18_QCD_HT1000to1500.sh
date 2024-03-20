@@ -6,5 +6,53 @@ python $COFFEAHOME/scripts/run_qg_analysis.py \
     --out_id $OUT_ID \
     --channel dijet \
     --files $FILES \
+    --out_dir UL18 \
     --run mc \
-    --workers 20
+    --workers 30 \
+    --campaign UL18 \
+    --jetvetomaps
+
+python $COFFEAHOME/scripts/run_qg_analysis.py \
+    --out_id $OUT_ID \
+    --channel dijet \
+    --files $FILES \
+    --out_dir UL18 \
+    --run mc \
+    --workers 30 \
+    --campaign UL18 \
+    --jes_up \
+    --jetvetomaps
+
+python $COFFEAHOME/scripts/run_qg_analysis.py \
+    --out_id $OUT_ID \
+    --channel dijet \
+    --files $FILES \
+    --out_dir UL18 \
+    --run mc \
+    --workers 30 \
+    --campaign UL18 \
+    --jes_down \
+    --jetvetomaps
+
+python $COFFEAHOME/scripts/run_qg_analysis.py \
+    --out_id $OUT_ID \
+    --channel dijet \
+    --files $FILES \
+    --out_dir UL18 \
+    --run mc \
+    --workers 30 \
+    --campaign UL18 \
+    --jer_up \
+    --jetvetomaps
+
+python $COFFEAHOME/scripts/run_qg_analysis.py \
+    --out_id $OUT_ID \
+    --channel dijet \
+    --files $FILES \
+    --out_dir UL18 \
+    --run mc \
+    --workers 30 \
+    --campaign UL18 \
+    --jer_down \
+    --jetvetomaps
+

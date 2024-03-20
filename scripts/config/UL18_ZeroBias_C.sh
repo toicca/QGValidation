@@ -7,4 +7,7 @@ python $COFFEAHOME/scripts/run_qg_analysis.py \
     --channel dijet \
     --files $FILES \
     --run data \
-    --workers 20
+    --campaign UL18 \
+    --out_dir UL18 \
+    --workers 30 \
+    --jetvetomaps

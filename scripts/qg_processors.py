@@ -120,7 +120,7 @@ class DijetProcessor(processor.ProcessorABC):
             'Jet2_pt': processor.column_accumulator(np.array([])),
             'Jet2_eta': processor.column_accumulator(np.array([])),
             'Jet2_phi': processor.column_accumulator(np.array([])),
-            'Jet2_mass': processor.column_accumulator(np.arrayUpstream([])),
+            'Jet2_mass': processor.column_accumulator(np.array([])),
             'Jet2_qgl': processor.column_accumulator(np.array([])),
             'Jet2_qgl_axis2': processor.column_accumulator(np.array([])),
             'Jet2_qgl_ptD': processor.column_accumulator(np.array([])),
