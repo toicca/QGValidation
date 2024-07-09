@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-conda env create -f coffeavenv.yml
+conda env create -f coffeavenv.yml -p ./coffeavenv 
 conda activate coffeavenv
 
 export COFFEAHOME=$PWD
